@@ -1,0 +1,104 @@
+import { useDecorators } from '@tsed/core';
+import { Delete, Get, Post, Put, } from '@tsed/common';
+import { Any, CollectionOf, Default, Returns, Summary } from '@tsed/schema';
+import _ from 'lodash';
+
+function nameWithoutModel(model: any): string {
+	return _.replace(model.name, 'Model', '');
+}
+export interface CreateNewOptions extends Record<string, unknown> {
+	path?: string;
+	model: any;
+	summary?: (options: CreateNewOptions) => string;
+}
+
+export function createItem(options: CreateNewOptions): Function {
+	const { path, model, summary } = options;
+	return useDecorators(
+		Post(path ?? '/'),
+		Summary(summary ? summary(options) : `Create a new ${nameWithoutModel(model)}`),
+		Returns(201, model).Groups('createResponse')
+	);
+}
+
+export interface DeleteOptions extends Record<string, unknown> {
+	path?: string;
+	model: any;
+	summary?: (options: DeleteOptions) => string;
+}
+
+export function deleteItem(options: DeleteOptions): Function {
+	const { path, model, summary } = options;
+	return useDecorators(
+		Delete(path ?? '/:id'),
+		Summary(summary ? summary(options) : `Delete a ${nameWithoutModel(model)} by id`),
+		Returns(200, model).Groups('delete')
+	);
+}
+
+export interface UpdateOptions extends Record<string, unknown> {
+	path?: string;
+	model: any;
+	summary?: (options: UpdateOptions) => string;
+}
+
+export function updateItem(options: UpdateOptions): Function {
+	const { path, model, summary } = options;
+	return useDecorators(
+		Put(path ?? '/:id'),
+		Summary(summary ? summary(options) : `Update a ${nameWithoutModel(model)} by id`),
+		Returns(200, model).Groups('update')
+	);
+}
+
+export interface GetItemOptions extends Record<string, unknown> {
+	path?: string;
+	model: any;
+	summary?: (options: GetItemOptions) => string;
+}
+
+export function getItem(options: GetItemOptions): Function {
+	const { path, model, summary } = options;
+	return useDecorators(
+		Get(path ?? '/:id'),
+		Summary(summary ? summary(options) : `Get a ${nameWithoutModel(model)} by id`),
+		Returns(200, model).Groups('read')
+	);
+}
+
+export interface GetItems {
+	path?: string;
+	model: any;
+	summary?: (options: GetItems) => string;
+}
+
+type TM = { [key: string]: 'asc' | 'desc' };
+export class SearchParams {
+	@Default(10) limit?: number;
+	@Default(0) offset?: number;
+	@CollectionOf(Object) orderBy?: Record<string, 'asc' | 'desc'>;
+	@CollectionOf(String) fields?: string[];
+	@Any() @Default({}) filters?: Record<
+		string,
+		{
+			mode: string;
+			value: any;
+			isRelation?: boolean;
+		}
+	>;
+	@Any()
+	include?: any;
+}
+
+export function getItems(options: GetItems): Function {
+	const { path, model, summary } = options;
+	return useDecorators(
+		Post(path ?? '/search'),
+		Summary(summary ? summary(options) : `Get all ${nameWithoutModel(model)}`),
+		Returns(200, Object)
+			.Groups('read')
+			.Of(model)
+			.Description(`Return a list of ${nameWithoutModel(model)}`)
+	);
+}
+
