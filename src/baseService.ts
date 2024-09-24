@@ -1,6 +1,7 @@
 import { InjectorService, OnInit, Service } from '@tsed/di';
 import _ from 'lodash';
 import { SearchParams } from './baseCrud';
+
 import { Subject } from 'rxjs';
 
 export interface IBaseService {
@@ -11,8 +12,8 @@ export interface IBaseService {
 
 @Service()
 export class BaseService<T> implements OnInit, IBaseService {
-	constructor(public token: string, public injectService: InjectorService) { }
-
+	constructor(public token: string, public injectService: InjectorService, private prismaService: any) { }
+	
 	private repositoryContainer: any;
 
 	onUpdate: Subject<{ id: number, inputData: any, result: any }> = new Subject()
@@ -23,6 +24,18 @@ export class BaseService<T> implements OnInit, IBaseService {
 
 	get repository() {
 		return this.repositoryContainer as T;
+	}
+
+	extend<T>(model: string, computedFields: Record<string, {
+		needs: Partial<Record<keyof T, boolean>>
+		compute: (model: T) => any
+	}>) {
+		const data = this.prismaService.$extends({
+			result: {
+				[model]: computedFields as any
+			}
+		})
+		this.repositoryContainer = data[model]
 	}
 
 
