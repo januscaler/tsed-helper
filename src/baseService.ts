@@ -12,7 +12,10 @@ export interface IBaseService {
 
 @Service()
 export class BaseService<T> implements OnInit, IBaseService {
-	constructor(public token: string, public injectService: InjectorService, public prismaService: Symbol) { }
+	constructor(public token: string) { }
+
+	public injectService: InjectorService;
+	public prismaService: Symbol;
 	
 	private repositoryContainer: any;
 

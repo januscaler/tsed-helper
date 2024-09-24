@@ -1,6 +1,6 @@
 {
   "name": "@januscaler/tsed-helper",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "publishConfig": {
     "@januscaler:registry": "https://npm.pkg.github.com"
   },
