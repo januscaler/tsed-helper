@@ -13,7 +13,7 @@ export interface IBaseService {
 @Service()
 export class BaseService<T> implements OnInit, IBaseService {
 	constructor(public token: string, public injectService: InjectorService, private prismaService: any) { }
-	
+
 	private repositoryContainer: any;
 
 	onUpdate: Subject<{ id: number, inputData: any, result: any }> = new Subject()
@@ -32,10 +32,10 @@ export class BaseService<T> implements OnInit, IBaseService {
 	}>) {
 		const data = this.prismaService.$extends({
 			result: {
-				[model]: computedFields as any
+				[_.toLower(model)]: computedFields as any
 			}
 		})
-		this.repositoryContainer = data[model]
+		this.repositoryContainer = data[_.toLower(model)]
 	}
 
 
@@ -188,7 +188,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 					{}
 				)
 		};
-		const total = await this.repositoryContainer.collection.count();
+		const total = await this.repositoryContainer?.collection?.count() || this.repositoryContainer?.count();
 		const items = await this.repositoryContainer.findMany(properties);
 		return {
 			total,
