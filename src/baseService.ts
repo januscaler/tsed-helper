@@ -12,7 +12,7 @@ export interface IBaseService {
 
 @Service()
 export class BaseService<T> implements OnInit, IBaseService {
-	constructor(public token: string, public injectService: InjectorService, private prismaService: any) { }
+	constructor(public token: string, public injectService: InjectorService, public prismaService: Symbol) { }
 	
 	private repositoryContainer: any;
 
@@ -30,7 +30,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 		needs: Partial<Record<keyof T, boolean>>
 		compute: (model: T) => any
 	}>) {
-		const data = this.prismaService.$extends({
+		const data = (this.prismaService as any).$extends({
 			result: {
 				[model]: computedFields as any
 			}
