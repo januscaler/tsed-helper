@@ -171,6 +171,16 @@ export class BaseService<T> implements OnInit, IBaseService {
 		);
 	}
 
+	private resolveCount(){
+		if(this.repositoryContainer.collection?.count){
+			return this.repositoryContainer.collection.count()
+		}
+		if(this.repositoryContainer.count){
+			return this.repositoryContainer.count()
+		}
+		throw new Error('repositoryContainer has no count method, probably you passed wrong repository');
+	}
+
 	async getAll({ filters, offset, limit, fields, include, orderBy }: SearchParams) {
 		const properties = {
 			skip: offset,
@@ -188,7 +198,8 @@ export class BaseService<T> implements OnInit, IBaseService {
 					{}
 				)
 		};
-		const total = await this.repositoryContainer?.collection?.count() || this.repositoryContainer?.count();
+		
+		const total = await this.resolveCount()
 		const items = await this.repositoryContainer.findMany(properties);
 		return {
 			total,
