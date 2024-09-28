@@ -32,10 +32,10 @@ export class BaseService<T> implements OnInit, IBaseService {
 	}>) {
 		const data = this.prismaService.$extends({
 			result: {
-				[_.toLower(model)]: computedFields as any
+				[_.camelCase(model)]: computedFields as any
 			}
 		})
-		this.repositoryContainer = data[_.toLower(model)]
+		this.repositoryContainer = data[_.camelCase(model)]
 	}
 
 
@@ -172,10 +172,10 @@ export class BaseService<T> implements OnInit, IBaseService {
 	}
 
 	private resolveCount(){
-		if(this.repositoryContainer.collection?.count){
+		if(this.repositoryContainer?.collection?.count){
 			return this.repositoryContainer.collection.count()
 		}
-		if(this.repositoryContainer.count){
+		if(this.repositoryContainer?.count){
 			return this.repositoryContainer.count()
 		}
 		throw new Error('repositoryContainer has no count method, probably you passed wrong repository');
