@@ -25,6 +25,15 @@ export class BaseService<T> implements OnInit, IBaseService {
 	get repository() {
 		return this.repositoryContainer as T;
 	}
+	get fieldNames() {
+		if (this.repositoryContainer?.collection) {
+			return Object.keys(this.repositoryContainer.collection.fields)
+		}
+		else if (this.repositoryContainer?.fields) {
+			return Object.keys(this.repositoryContainer.fields)
+		}
+		throw new Error('repositoryContainer has no fields, probably you passed wrong repository');
+	}
 
 	extend<T>(model: string, computedFields: Record<string, {
 		needs: Partial<Record<keyof T, boolean>>
@@ -59,8 +68,19 @@ export class BaseService<T> implements OnInit, IBaseService {
 		return (await this.repositoryContainer.findFirst({ where: { id } })) || {};
 	}
 
-	async update(id: number, data: any) {
-		const result = await this.repositoryContainer.update({ where: { id }, data });
+	async update(id: null, data: any, { relationOperation, relationvalueMapper }: {
+		relationOperation?: 'set' | 'disconnect' | 'delete' | 'connect' | 'disconnectMany' | 'deleteMany' | 'create' | 'createMany' | 'update' | 'updateMany' | 'upsert' | 'upsertMany'
+		relationvalueMapper?: (value: any) => any
+	} = {}) {
+		const defaultRelationValueMapper = (value: any) => (_.isArray(value) ? _.map(value, (id: any) => ({ id })) : { id: value })
+		const dataWithRelations = _.pick(data, this.fieldNames)
+		const relationData = _.omit(data, this.fieldNames)
+		const finalData = _.transform(relationData, (result, value, key) => {
+			result[key] = { [relationOperation ?? 'set']: relationvalueMapper ? relationvalueMapper(value) : defaultRelationValueMapper(value) }
+		}, {
+			...dataWithRelations
+		})
+		const result = await this.repositoryContainer.update({ where: { id }, data: finalData });
 		this.onUpdate.next({ id, inputData: data, result });
 		return result;
 	}
@@ -171,11 +191,11 @@ export class BaseService<T> implements OnInit, IBaseService {
 		);
 	}
 
-	private resolveCount(){
-		if(this.repositoryContainer?.collection?.count){
+	private resolveCount() {
+		if (this.repositoryContainer?.collection?.count) {
 			return this.repositoryContainer.collection.count()
 		}
-		if(this.repositoryContainer?.count){
+		if (this.repositoryContainer?.count) {
 			return this.repositoryContainer.count()
 		}
 		throw new Error('repositoryContainer has no count method, probably you passed wrong repository');
@@ -198,7 +218,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 					{}
 				)
 		};
-		
+
 		const total = await this.resolveCount()
 		const items = await this.repositoryContainer.findMany(properties);
 		return {
