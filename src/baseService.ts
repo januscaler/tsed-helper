@@ -76,6 +76,9 @@ export class BaseService<T> implements OnInit, IBaseService {
 		const dataWithRelations = _.pick(data, this.fieldNames)
 		const relationData = _.omit(data, this.fieldNames)
 		const finalData = _.transform(relationData, (result, value, key) => {
+			if (_.isNil(value)) {
+				return
+			}
 			result[key] = { [relationOperation ?? 'set']: relationvalueMapper ? relationvalueMapper(value) : defaultRelationValueMapper(value) }
 		}, {
 			...dataWithRelations
