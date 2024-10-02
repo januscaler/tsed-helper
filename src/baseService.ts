@@ -68,7 +68,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 		return (await this.repositoryContainer.findFirst({ where: { id } })) || {};
 	}
 
-	async update(id: null, data: any, { relationOperation, relationvalueMapper }: {
+	async update(id: number, data: any, { relationOperation, relationvalueMapper }: {
 		relationOperation?: 'set' | 'disconnect' | 'delete' | 'connect' | 'disconnectMany' | 'deleteMany' | 'create' | 'createMany' | 'update' | 'updateMany' | 'upsert' | 'upsertMany'
 		relationvalueMapper?: (value: any) => any
 	} = {}) {
