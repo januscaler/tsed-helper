@@ -73,7 +73,8 @@ export class BaseService<T> implements OnInit, IBaseService {
 		EM: 'EM',
 		LT: 'LT',
 		GT: 'GT',
-		EX: 'EX'
+		EX: 'EX',
+        RANGE:'RANGE'
 	};
 
 	readonly modesToFilterMap = {
@@ -163,6 +164,13 @@ export class BaseService<T> implements OnInit, IBaseService {
 							break;
 						case this.MODES.EX:
 							_.set(finalFilters, `${propertyName}.not.contains`, value);
+							break;
+					}
+				}
+				if (_.isObject(value)) {
+					switch (mode) {
+						case this.MODES.RANGE:
+							_.set(finalFilters, `${propertyName}`, value);
 							break;
 					}
 				}
