@@ -9,4 +9,20 @@ npm install @januscaler/tsed-helper
 ```
 
 ## Usage
-
+ ### Range Search
+  ```typescript
+//   for numbers
+  {
+    "field":{
+        mode:"RG",
+        value:[5,30]
+    }
+  }
+  //   for date
+  {
+    "field":{
+        "mode":"RG",
+       "value":["2024-10-13T16:15:57.132Z","2024-10-13T16:15:57.132Z"]
+    }
+  }
+  ```
