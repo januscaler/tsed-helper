@@ -1,7 +1,7 @@
 import { InjectorService, OnInit, Service } from '@tsed/di';
 import _ from 'lodash';
 import { SearchParams } from './baseCrud';
-
+import { Prisma } from '@prisma/client';
 import { Subject } from 'rxjs';
 
 export interface IBaseService {
@@ -12,9 +12,20 @@ export interface IBaseService {
 
 @Service()
 export class BaseService<T> implements OnInit, IBaseService {
-	constructor(public token: string, public injectService: InjectorService, private prismaService: any) { }
+	constructor(public token: string, public injectService: InjectorService, private prismaService: any) {
+
+		// @ts-ignore
+		this.tablesInfo = _.transform(Prisma.dmmf.datamodel.models, (finalInfoMap, { name, fields, primaryKey }) => {
+			finalInfoMap[name] = {
+				name,
+				fields,
+				primaryKey
+			}
+		}, {})
+	}
 
 	private repositoryContainer: any;
+	protected tablesInfo: Record<string, any> = {}
 
 	onUpdate: Subject<{ id: number, inputData: any, result: any }> = new Subject()
 
@@ -33,6 +44,24 @@ export class BaseService<T> implements OnInit, IBaseService {
 			return Object.keys(this.repositoryContainer.fields)
 		}
 		throw new Error('repositoryContainer has no fields, probably you passed wrong repository');
+	}
+
+	get currentModelName() {
+		if (this.repositoryContainer?.name) {
+			return this.repositoryContainer.name
+		}
+		if (this.repositoryContainer?.collection?.name) {
+			return this.repositoryContainer.collection.name;
+		}
+	}
+	get currentModelInfo() {
+		return this.tablesInfo[this.currentModelName]
+	}
+	get currentModelFieldsMapping() {
+		const { fields } = this.currentModelInfo
+		return _.transform(fields, (result, field) => {
+			result[field.name] = field;
+		}, {})
 	}
 
 	extend<T>(model: string, computedFields: Record<string, {
@@ -90,105 +119,86 @@ export class BaseService<T> implements OnInit, IBaseService {
 
 	readonly MODES = {
 		EQ: 'EQ',
-		EQEM: 'EQEM',
-		EXEM: 'EXEM',
-		NEM: 'NEM',
-		EM: 'EM',
+		EX: 'EX',
 		LT: 'LT',
 		GT: 'GT',
-		EX: 'EX'
+		EM: 'EM',
+		NEM: 'NEM',
+		RG: 'RG'
 	};
 
-	readonly modesToFilterMap = {
-		contains: '',
-		equals: '',
-		endsWith: '',
-		gt: '',
-		gte: '',
-		in: [''],
-		lt: '',
-		lte: '',
-		not: '',
-		notIn: [],
-		startsWith: ''
-	};
+	protected modeToTypeMappers = {
+		EM: (prismaFilters: any, value: any, fieldName: string, fieldInfo: any, isRelation: boolean) => {
+			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
+				_.set(prismaFilters, `${fieldName}`, null);
+			}
+			if (fieldInfo.type === 'String' && !fieldInfo.isRequired) {
+				_.set(prismaFilters, `${fieldName}`, null);
+			}
+		},
+		EQ: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+			if (fieldInfo.type === 'Int') {
+				_.set(prismaFilters, `${propertyName}.equals`, value);
+			}
+			if (_.isArray(value)) {
+				if (isRelation) {
+					_.set(prismaFilters, `${propertyName}.some.id.in`, value);
+				} else {
+					_.set(prismaFilters, `${propertyName}.in`, value);
+				}
+			}
+			if (fieldInfo.type === 'String') {
+				_.set(prismaFilters, `${propertyName}.contains`, value);
+			}
+		},
+		EX: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+			if (_.isNumber(value)) {
+				_.set(prismaFilters, `${propertyName}.not.equals`, value);
+			}
+			if (_.isArray(value)) {
+				if (isRelation) {
+					_.set(prismaFilters, `${propertyName}.none.id.in`, value);
+				} else {
+					_.set(prismaFilters, `${propertyName}.not.in`, value);
+				}
+			}
+			if (_.isString(value)) {
+				_.set(prismaFilters, `${propertyName}.not.contains`, value);
+			}
+		},
+		LT: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+			if (_.isNumber(value)) {
+				_.set(prismaFilters, `${propertyName}.lt`, value);
+			}
+		},
+		GT: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+			if (_.isNumber(value)) {
+				_.set(prismaFilters, `${propertyName}.gt`, value);
+			}
+		},
+		NEM: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
+				_.set(prismaFilters, `${propertyName}.not`, null);
+			}
+			if (fieldInfo.type === 'String' && !fieldInfo.isRequired) {
+				_.set(prismaFilters, `${propertyName}.not`, null);
+			}
+		},
+		RG: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+			if (_.isArray(value)) {
+				const [startValue, endValue] = value
+				_.set(prismaFilters, `${propertyName}.lte`, endValue);
+				_.set(prismaFilters, `${propertyName}.gte`, startValue);
+			}
+		},
+	}
 
-	modeToFilter(filters?: Record<string, { mode: string; value: any, isRelation?: boolean }>) {
+	protected modeToFilter(filters?: Record<string, { mode: string; value: any, isRelation?: boolean }>) {
 		return _.transform(
 			filters ?? {},
-			(finalFilters, filter, propertyName) => {
+			(finalFilters: any, filter, fieldName) => {
 				const { mode, value, isRelation } = filter;
-				if (_.isNumber(value)) {
-					switch (mode) {
-						case this.MODES.EM:
-							_.set(finalFilters, `${propertyName}`, null);
-							break;
-						case this.MODES.NEM:
-							_.set(finalFilters, `${propertyName}.not.equals`, null);
-							break;
-						case this.MODES.LT:
-							_.set(finalFilters, `${propertyName}.lt`, value);
-							break;
-						case this.MODES.GT:
-							_.set(finalFilters, `${propertyName}.gt`, value);
-							break;
-						case this.MODES.EQ:
-							_.set(finalFilters, `${propertyName}.equals`, value);
-							break;
-						case this.MODES.EXEM:
-							_.set(finalFilters, `${propertyName}.not.equals`, value);
-							break;
-						case this.MODES.EX:
-							_.set(finalFilters, `${propertyName}.not.equals`, value);
-							break;
-					}
-				}
-				if (_.isArray(value)) {
-					switch (mode) {
-						case this.MODES.EM:
-							_.set(finalFilters, `${propertyName}.none`, {});
-							break;
-						case this.MODES.NEM:
-							_.set(finalFilters, `${propertyName}.some`, {});
-							break;
-						case this.MODES.EQ:
-							if (isRelation) {
-								_.set(finalFilters, `${propertyName}.some.id.in`, value);
-							} else {
-								_.set(finalFilters, `${propertyName}.in`, value);
-							}
-							break;
-						case this.MODES.EX:
-							if (isRelation) {
-								_.set(finalFilters, `${propertyName}.none.id.in`, value);
-							} else {
-								_.set(finalFilters, `${propertyName}.not.in`, value);
-							}
-							break;
-					}
-				}
-				if (_.isString(value)) {
-					switch (mode) {
-						case this.MODES.EM:
-							_.set(finalFilters, `${propertyName}.equals`, null);
-							break;
-						case this.MODES.NEM:
-							_.set(finalFilters, `${propertyName}.not.equals`, null);
-							break;
-						case this.MODES.EQ:
-							_.set(finalFilters, `${propertyName}.contains`, value);
-							break;
-						case this.MODES.EQEM:
-							_.set(finalFilters, `${propertyName}.equals`, value);
-							break;
-						case this.MODES.EXEM:
-							_.set(finalFilters, `${propertyName}.not.equals`, value);
-							break;
-						case this.MODES.EX:
-							_.set(finalFilters, `${propertyName}.not.contains`, value);
-							break;
-					}
-				}
+				this.modeToTypeMappers[mode](finalFilters, value, fieldName, this.currentModelFieldsMapping[fieldName], isRelation);
 			},
 			{}
 		);
