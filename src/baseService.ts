@@ -132,6 +132,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
 				_.set(prismaFilters, `${fieldName}`, null);
 			}
+			
 			if (fieldInfo.type === 'String' && !fieldInfo.isRequired) {
 				_.set(prismaFilters, `${fieldName}`, null);
 			}
@@ -140,6 +141,9 @@ export class BaseService<T> implements OnInit, IBaseService {
 			if (fieldInfo.type === 'Int') {
 				_.set(prismaFilters, `${propertyName}.equals`, value);
 			}
+			if (fieldInfo.type === 'DateTime') {
+                _.set(prismaFilters, `${propertyName}.equals`, value);
+            }
 			if (_.isArray(value)) {
 				if (isRelation) {
 					_.set(prismaFilters, `${propertyName}.some.id.in`, value);
@@ -155,6 +159,9 @@ export class BaseService<T> implements OnInit, IBaseService {
 			if (_.isNumber(value)) {
 				_.set(prismaFilters, `${propertyName}.not.equals`, value);
 			}
+			if (fieldInfo.type === 'DateTime') {
+                _.set(prismaFilters, `${propertyName}.not.equals`, value);
+            }
 			if (_.isArray(value)) {
 				if (isRelation) {
 					_.set(prismaFilters, `${propertyName}.none.id.in`, value);
@@ -170,11 +177,17 @@ export class BaseService<T> implements OnInit, IBaseService {
 			if (_.isNumber(value)) {
 				_.set(prismaFilters, `${propertyName}.lt`, value);
 			}
+			if (fieldInfo.type === 'DateTime') {
+                _.set(prismaFilters, `${propertyName}.lt`, value);
+            }
 		},
 		GT: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
 			if (_.isNumber(value)) {
 				_.set(prismaFilters, `${propertyName}.gt`, value);
 			}
+			if (fieldInfo.type === 'DateTime') {
+                _.set(prismaFilters, `${propertyName}.gt`, value);
+            }
 		},
 		NEM: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
 			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
@@ -183,6 +196,9 @@ export class BaseService<T> implements OnInit, IBaseService {
 			if (fieldInfo.type === 'String' && !fieldInfo.isRequired) {
 				_.set(prismaFilters, `${propertyName}.not`, null);
 			}
+			if (fieldInfo.type === 'DateTime') {
+                _.set(prismaFilters, `${propertyName}.not`, null);
+            }
 		},
 		RG: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
 			if (_.isArray(value)) {
@@ -232,7 +248,12 @@ export class BaseService<T> implements OnInit, IBaseService {
 				)
 		};
 
-		const total = await this.resolveCount()
+		const { _count: {id:total} } = await this.repositoryContainer.aggregate({
+            where: this.modeToFilter(filters),
+                _count: {
+                      id: true,
+                  }
+        });
 		const items = await this.repositoryContainer.findMany(properties);
 		return {
 			total,
