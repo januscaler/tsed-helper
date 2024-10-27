@@ -13,7 +13,7 @@ export interface IBaseService {
 
 @Service()
 export class BaseService<T> implements OnInit, IBaseService {
-	constructor(protected repositoryClass: T, protected injectorService: InjectorService, protected prismaService: any, relativePrismaFilePath?: string) {
+	constructor(public token: string, public injectService: InjectorService, private prismaService: any, relativePrismaFilePath?: string) {
 		this.prismaFilePath = relativePrismaFilePath ?? "../../../../prisma/schema.prisma"
 	}
 	public prismaFilePath: string
@@ -77,7 +77,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 		const dmmf = await getDMMF({
 			datamodelPath: join(__dirname, this.prismaFilePath)
 		})
-		this.repositoryContainer = this.injectorService.get<typeof this.repositoryClass>(this.repositoryClass);
+		this.repositoryContainer = this.injectService.get<typeof this.token>(this.token);
 		this.tablesInfo = _.transform(dmmf.datamodel.models, (finalInfoMap, { name, fields, primaryKey }) => {
 			finalInfoMap[name] = {
 				name,
