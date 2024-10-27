@@ -11,7 +11,6 @@ export interface IBaseService {
 	onCreate: Subject<{ data: any, result: any }>
 }
 
-@Service()
 export class BaseService<T> implements OnInit, IBaseService {
 	constructor(public token: string, public injectService: InjectorService, private prismaService: any, relativePrismaFilePath?: string) {
 		this.prismaFilePath = relativePrismaFilePath ?? "../../../../prisma/schema.prisma"
