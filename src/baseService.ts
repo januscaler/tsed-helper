@@ -13,19 +13,10 @@ export interface IBaseService {
 
 @Service()
 export class BaseService<T> implements OnInit, IBaseService {
-	constructor({ injectorService, prismaService, repositoryClass, relativePrismaFilePath }: {
-		relativePrismaFilePath?: string
-		repositoryClass: T, injectorService: InjectorService, prismaService: any
-	}) {
-		this.injectorService = injectorService
-		this.prismaService = prismaService
-		this.repositoryClass = repositoryClass
+	constructor(protected repositoryClass: T, protected injectorService: InjectorService, protected prismaService: any, relativePrismaFilePath?: string) {
 		this.prismaFilePath = relativePrismaFilePath ?? "../../../../prisma/schema.prisma"
 	}
 	public prismaFilePath: string
-	private repositoryClass: T
-	private prismaService: any
-	private injectorService: InjectorService
 	private repositoryContainer: any;
 	protected tablesInfo: Record<string, any> = {}
 
