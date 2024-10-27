@@ -1,8 +1,9 @@
 import { InjectorService, OnInit, Service } from '@tsed/di';
 import _ from 'lodash';
 import { SearchParams } from './baseCrud';
-import { Prisma } from '@prisma/client';
+import { getDMMF } from '@prisma/internals';
 import { Subject } from 'rxjs';
+import { join } from 'path'
 
 export interface IBaseService {
 	onUpdate: Subject<{ id: number, inputData: any, result: any }>
@@ -12,18 +13,19 @@ export interface IBaseService {
 
 @Service()
 export class BaseService<T> implements OnInit, IBaseService {
-	constructor(public token: string, public injectService: InjectorService, private prismaService: any) {
-
-		// @ts-ignore
-		this.tablesInfo = _.transform(Prisma.dmmf.datamodel.models, (finalInfoMap, { name, fields, primaryKey }) => {
-			finalInfoMap[name] = {
-				name,
-				fields,
-				primaryKey
-			}
-		}, {})
+	constructor({ injectorService, prismaService, repositoryClass, relativePrismaFilePath }: {
+		relativePrismaFilePath?: string
+		repositoryClass: T, injectorService: InjectorService, prismaService: any
+	}) {
+		this.injectorService = injectorService
+		this.prismaService = prismaService
+		this.repositoryClass = repositoryClass
+		this.prismaFilePath = relativePrismaFilePath ?? "../../../../prisma/schema.prisma"
 	}
-
+	public prismaFilePath: string
+	private repositoryClass: T
+	private prismaService: any
+	private injectorService: InjectorService
 	private repositoryContainer: any;
 	protected tablesInfo: Record<string, any> = {}
 
@@ -36,6 +38,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 	get repository() {
 		return this.repositoryContainer as T;
 	}
+
 	get fieldNames() {
 		if (this.repositoryContainer?.collection) {
 			return Object.keys(this.repositoryContainer.collection.fields)
@@ -54,9 +57,11 @@ export class BaseService<T> implements OnInit, IBaseService {
 			return this.repositoryContainer.collection.name;
 		}
 	}
+
 	get currentModelInfo() {
 		return this.tablesInfo[this.currentModelName]
 	}
+
 	get currentModelFieldsMapping() {
 		const { fields } = this.currentModelInfo
 		return _.transform(fields, (result, field) => {
@@ -77,8 +82,18 @@ export class BaseService<T> implements OnInit, IBaseService {
 	}
 
 
-	$onInit(): void | Promise<any> {
-		this.repositoryContainer = this.injectService.get<typeof this.token>(this.token);
+	async $onInit(): Promise<any> {
+		const dmmf = await getDMMF({
+			datamodelPath: join(__dirname, this.prismaFilePath)
+		})
+		this.repositoryContainer = this.injectorService.get<typeof this.repositoryClass>(this.repositoryClass);
+		this.tablesInfo = _.transform(dmmf.datamodel.models, (finalInfoMap, { name, fields, primaryKey }) => {
+			finalInfoMap[name] = {
+				name,
+				fields,
+				primaryKey
+			}
+		}, {})
 	}
 
 	async create(data: any) {
@@ -132,7 +147,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
 				_.set(prismaFilters, `${fieldName}`, null);
 			}
-			
+
 			if (fieldInfo.type === 'String' && !fieldInfo.isRequired) {
 				_.set(prismaFilters, `${fieldName}`, null);
 			}
@@ -142,8 +157,8 @@ export class BaseService<T> implements OnInit, IBaseService {
 				_.set(prismaFilters, `${propertyName}.equals`, value);
 			}
 			if (fieldInfo.type === 'DateTime') {
-                _.set(prismaFilters, `${propertyName}.equals`, value);
-            }
+				_.set(prismaFilters, `${propertyName}.equals`, value);
+			}
 			if (_.isArray(value)) {
 				if (isRelation) {
 					_.set(prismaFilters, `${propertyName}.some.id.in`, value);
@@ -160,8 +175,8 @@ export class BaseService<T> implements OnInit, IBaseService {
 				_.set(prismaFilters, `${propertyName}.not.equals`, value);
 			}
 			if (fieldInfo.type === 'DateTime') {
-                _.set(prismaFilters, `${propertyName}.not.equals`, value);
-            }
+				_.set(prismaFilters, `${propertyName}.not.equals`, value);
+			}
 			if (_.isArray(value)) {
 				if (isRelation) {
 					_.set(prismaFilters, `${propertyName}.none.id.in`, value);
@@ -178,16 +193,16 @@ export class BaseService<T> implements OnInit, IBaseService {
 				_.set(prismaFilters, `${propertyName}.lt`, value);
 			}
 			if (fieldInfo.type === 'DateTime') {
-                _.set(prismaFilters, `${propertyName}.lt`, value);
-            }
+				_.set(prismaFilters, `${propertyName}.lt`, value);
+			}
 		},
 		GT: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
 			if (_.isNumber(value)) {
 				_.set(prismaFilters, `${propertyName}.gt`, value);
 			}
 			if (fieldInfo.type === 'DateTime') {
-                _.set(prismaFilters, `${propertyName}.gt`, value);
-            }
+				_.set(prismaFilters, `${propertyName}.gt`, value);
+			}
 		},
 		NEM: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
 			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
@@ -197,8 +212,8 @@ export class BaseService<T> implements OnInit, IBaseService {
 				_.set(prismaFilters, `${propertyName}.not`, null);
 			}
 			if (fieldInfo.type === 'DateTime') {
-                _.set(prismaFilters, `${propertyName}.not`, null);
-            }
+				_.set(prismaFilters, `${propertyName}.not`, null);
+			}
 		},
 		RG: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
 			if (_.isArray(value)) {
@@ -220,16 +235,6 @@ export class BaseService<T> implements OnInit, IBaseService {
 		);
 	}
 
-	private resolveCount() {
-		if (this.repositoryContainer?.collection?.count) {
-			return this.repositoryContainer.collection.count()
-		}
-		if (this.repositoryContainer?.count) {
-			return this.repositoryContainer.count()
-		}
-		throw new Error('repositoryContainer has no count method, probably you passed wrong repository');
-	}
-
 	async getAll({ filters, offset, limit, fields, include, orderBy }: SearchParams) {
 		const properties = {
 			skip: offset,
@@ -248,12 +253,12 @@ export class BaseService<T> implements OnInit, IBaseService {
 				)
 		};
 
-		const { _count: {id:total} } = await this.repositoryContainer.aggregate({
-            where: this.modeToFilter(filters),
-                _count: {
-                      id: true,
-                  }
-        });
+		const { _count: { id: total } } = await this.repositoryContainer.aggregate({
+			where: this.modeToFilter(filters),
+			_count: {
+				id: true,
+			}
+		});
 		const items = await this.repositoryContainer.findMany(properties);
 		return {
 			total,
