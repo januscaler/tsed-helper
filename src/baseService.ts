@@ -4,11 +4,83 @@ import { SearchParams } from './baseCrud';
 import { getDMMF } from '@prisma/internals';
 import { Subject } from 'rxjs';
 import { join } from 'path'
+import { DMMF, ReadonlyDeep } from '@prisma/client/runtime/library';
 
 export interface IBaseService {
 	onUpdate: Subject<{ id: number, inputData: any, result: any }>
 	onDelete: Subject<{ id: number, result: any }>
 	onCreate: Subject<{ data: any, result: any }>
+}
+
+export interface PrismaMapperEntity {
+	name: string;
+	dbName: string | null;
+	fields: DMMF.Field[];
+	uniqueFields: string[][];
+	uniqueIndexes: DMMF.uniqueIndex[];
+	documentation?: string;
+	primaryKey: DMMF.PrimaryKey | null;
+	isGenerated?: boolean;
+}
+export interface PrismaMapperEntityField {
+	kind: DMMF.FieldKind;
+	name: string;
+	isRequired: boolean;
+	isList: boolean;
+	isUnique: boolean;
+	isId: boolean;
+	isReadOnly: boolean;
+	isGenerated?: boolean;
+	isUpdatedAt?: boolean;
+	/**
+	 * Describes the data type in the same the way it is defined in the Prisma schema:
+	 * BigInt, Boolean, Bytes, DateTime, Decimal, Float, Int, JSON, String, $ModelName
+	 */
+	type: string;
+	dbName?: string | null;
+	hasDefaultValue: boolean;
+	default?: DMMF.FieldDefault | DMMF.FieldDefaultScalar | DMMF.FieldDefaultScalar[];
+	relationFromFields?: string[];
+	relationToFields?: string[];
+	relationOnDelete?: string;
+	relationName?: string;
+	documentation?: string;
+}
+
+export class PrismaMetaMapper {
+
+	constructor(protected relativePrismaFilePath = "../../../../prisma/schema.prisma") { }
+
+	async getDMMF(): Promise<ReadonlyDeep<{
+		datamodel: DMMF.Datamodel;
+		schema: DMMF.Schema;
+		mappings: DMMF.Mappings;
+	}>> {
+		const dmmf = await getDMMF({
+			datamodelPath: join(__dirname, this.relativePrismaFilePath)
+		})
+		return dmmf
+	}
+
+	async getEntity(entityName: string) {
+		const tablesInfo = await this.getTablesInfo()
+		return tablesInfo[entityName]
+	}
+
+	async getEntityFieldMapping(entityName: string) {
+		const { fields } = await this.getEntity(entityName)
+		return _.transform(fields, (result, field) => {
+			result[field.name] = field;
+		}, {}) as Promise<Record<string, PrismaMapperEntityField>>
+	}
+
+	async getTablesInfo() {
+		const dmmf = await this.getDMMF()
+		return _.transform(dmmf.datamodel.models, (finalInfoMap, value) => {
+			finalInfoMap[value.name] = value
+		}, {}) as Promise<Record<string, PrismaMapperEntity>>
+	}
+
 }
 
 export class BaseService<T> implements OnInit, IBaseService {
@@ -17,7 +89,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 	}
 	public prismaFilePath: string
 	private repositoryContainer: any;
-	protected tablesInfo: Record<string, any> = {}
+	tablesInfo: Record<string, PrismaMapperEntity> = {}
 
 	onUpdate: Subject<{ id: number, inputData: any, result: any }> = new Subject()
 
@@ -56,7 +128,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 		const { fields } = this.currentModelInfo
 		return _.transform(fields, (result, field) => {
 			result[field.name] = field;
-		}, {})
+		}, {}) as Record<string, PrismaMapperEntityField>
 	}
 
 	extend<T>(model: string, computedFields: Record<string, {
@@ -73,17 +145,13 @@ export class BaseService<T> implements OnInit, IBaseService {
 
 
 	async $onInit(): Promise<any> {
+		const prismaMapper=new PrismaMetaMapper(this.prismaFilePath)
+		
 		const dmmf = await getDMMF({
 			datamodelPath: join(__dirname, this.prismaFilePath)
 		})
 		this.repositoryContainer = this.injectService.get<typeof this.token>(this.token);
-		this.tablesInfo = _.transform(dmmf.datamodel.models, (finalInfoMap, { name, fields, primaryKey }) => {
-			finalInfoMap[name] = {
-				name,
-				fields,
-				primaryKey
-			}
-		}, {})
+		this.tablesInfo = await prismaMapper.getTablesInfo()
 	}
 
 	async create(data: any) {
