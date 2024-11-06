@@ -14,7 +14,7 @@ export interface IBaseService {
 
 export class BaseService<T> implements OnInit, IBaseService {
 	constructor(public token: string, public injectService: InjectorService, private prismaService: any, relativePrismaFilePath?: string) {
-		this.prismaFilePath = relativePrismaFilePath ?? "../../../../prisma/schema.prisma"
+		this.prismaFilePath = relativePrismaFilePath ?? "./prisma/schema.prisma"
 	}
 	public prismaFilePath: string
 	private repositoryContainer: any;
