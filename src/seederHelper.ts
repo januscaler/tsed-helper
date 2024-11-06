@@ -1,14 +1,14 @@
 import _ from 'lodash';
 import Aigle from 'aigle'
-import glob from 'glob'
-import path from 'path'
+import { sync } from 'glob'
+import { join, basename, dirname } from 'path'
 
 export class SeederHelper {
 
-    async getAllSeeds(seedGlobPatten = '../controllers/rest/**/seed.ts') {
-        const allSeedsPaths = glob.sync(path.join(__dirname, seedGlobPatten), { dotRelative: true })
+    async getAllSeeds(seedGlobPatten = './src/controllers/rest/**/seed.ts') {
+        const allSeedsPaths = sync(join(__dirname, '../../../../', seedGlobPatten), { dotRelative: true })
         return await Aigle.transform<any, any>(allSeedsPaths, async (entities, seedPath) => {
-            const entityName = path.basename(path.dirname(seedPath))
+            const entityName = basename(dirname(seedPath))
             const { default: seedMap } = await import(seedPath)
             entities[entityName] = {
                 entityName,
