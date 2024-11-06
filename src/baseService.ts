@@ -1,9 +1,7 @@
 import { InjectorService, OnInit } from '@tsed/di';
 import _ from 'lodash';
 import { SearchParams } from './baseCrud';
-import { getDMMF } from '@prisma/internals';
 import { Subject } from 'rxjs';
-import { join } from 'path'
 import { PrismaMapperEntity, PrismaMapperEntityField, PrismaMetaMapper } from './prismaMetaMapper'
 
 export interface IBaseService {
@@ -75,10 +73,6 @@ export class BaseService<T> implements OnInit, IBaseService {
 
 	async $onInit(): Promise<any> {
 		const prismaMapper = new PrismaMetaMapper(this.prismaFilePath)
-
-		const dmmf = await getDMMF({
-			datamodelPath: join(__dirname, this.prismaFilePath)
-		})
 		this.repositoryContainer = this.injectService.get<typeof this.token>(this.token);
 		this.tablesInfo = await prismaMapper.getTablesInfo()
 	}
