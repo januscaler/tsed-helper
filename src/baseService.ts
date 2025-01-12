@@ -124,20 +124,16 @@ export class BaseService<T> implements OnInit, IBaseService {
 	};
 
 	protected modeToTypeMappers = {
-		EM: (prismaFilters: any, value: any, fieldName: string, fieldInfo: any, isRelation: boolean) => {
-			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
-				_.set(prismaFilters, `${fieldName}`, null);
-			}
-
-			if (fieldInfo.type === 'String' && !fieldInfo.isRequired) {
-				_.set(prismaFilters, `${fieldName}`, null);
+		EM: ({prismaFilters, value, fieldName, fieldInfo, isRelation,nestedFieldPath}) => {
+			if ((fieldInfo?.type === 'Int' || fieldInfo?.type === 'String' || nestedFieldPath) && !fieldInfo?.isRequired) {
+				_.set(prismaFilters, `${nestedFieldPath?nestedFieldPath:fieldName}`, null);
 			}
 		},
-		EQ: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
-			if (fieldInfo.type === 'Int') {
+		EQ: ({ prismaFilters, value, propertyName, fieldInfo, isRelation, nestedFieldPath }) => {
+			if (fieldInfo?.type === 'Int') {
 				_.set(prismaFilters, `${propertyName}.equals`, value);
 			}
-			if (fieldInfo.type === 'DateTime') {
+			if (fieldInfo?.type === 'DateTime') {
 				_.set(prismaFilters, `${propertyName}.equals`, value);
 			}
 			if (_.isArray(value)) {
@@ -147,15 +143,15 @@ export class BaseService<T> implements OnInit, IBaseService {
 					_.set(prismaFilters, `${propertyName}.in`, value);
 				}
 			}
-			if (fieldInfo.type === 'String') {
-				_.set(prismaFilters, `${propertyName}.contains`, value);
+			if (fieldInfo?.type === 'String' || nestedFieldPath) {
+				_.set(prismaFilters, `${nestedFieldPath?nestedFieldPath:propertyName}.contains`, value);
 			}
 		},
-		EX: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+		EX: ({ prismaFilters, value, propertyName, fieldInfo, isRelation, nestedFieldPath }) => {
 			if (_.isNumber(value)) {
 				_.set(prismaFilters, `${propertyName}.not.equals`, value);
 			}
-			if (fieldInfo.type === 'DateTime') {
+			if (fieldInfo?.type === 'DateTime') {
 				_.set(prismaFilters, `${propertyName}.not.equals`, value);
 			}
 			if (_.isArray(value)) {
@@ -165,52 +161,43 @@ export class BaseService<T> implements OnInit, IBaseService {
 					_.set(prismaFilters, `${propertyName}.not.in`, value);
 				}
 			}
-			if (_.isString(value)) {
-				_.set(prismaFilters, `${propertyName}.not.contains`, value);
+			if (_.isString(value) || nestedFieldPath) {
+				_.set(prismaFilters, `${nestedFieldPath?nestedFieldPath:propertyName}.not.contains`, value);
 			}
 		},
-		LT: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
-			if (_.isNumber(value)) {
-				_.set(prismaFilters, `${propertyName}.lt`, value);
-			}
-			if (fieldInfo.type === 'DateTime') {
+		LT: ({ prismaFilters, value, propertyName, fieldInfo, isRelation, nestedFieldPath }) => {
+			if (_.isNumber(value) || fieldInfo?.type === 'DateTime' || nestedFieldPath) {
 				_.set(prismaFilters, `${propertyName}.lt`, value);
 			}
 		},
-		GT: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
-			if (_.isNumber(value)) {
-				_.set(prismaFilters, `${propertyName}.gt`, value);
-			}
-			if (fieldInfo.type === 'DateTime') {
+		GT: ({ prismaFilters, value, propertyName, fieldInfo, isRelation, nestedFieldPath }) => {
+			if (_.isNumber(value) || fieldInfo?.type === 'DateTime' || nestedFieldPath) {
 				_.set(prismaFilters, `${propertyName}.gt`, value);
 			}
 		},
-		NEM: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
-			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
-				_.set(prismaFilters, `${propertyName}.not`, null);
+		NEM: ({ prismaFilters, value, propertyName, fieldInfo, isRelation, nestedFieldPath }) => {
+			if ((fieldInfo?.type === 'Int' || fieldInfo?.type === 'String' || nestedFieldPath) && !fieldInfo?.isRequired) {
+				_.set(prismaFilters, `${nestedFieldPath?nestedFieldPath:propertyName}.not`, null);
 			}
-			if (fieldInfo.type === 'String' && !fieldInfo.isRequired) {
-				_.set(prismaFilters, `${propertyName}.not`, null);
-			}
-			if (fieldInfo.type === 'DateTime') {
+			if (fieldInfo?.type === 'DateTime') {
 				_.set(prismaFilters, `${propertyName}.not`, null);
 			}
 		},
-		RG: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+		RG: ({ prismaFilters, value, propertyName, fieldInfo, isRelation, nestedFieldPath }) => {
 			if (_.isArray(value)) {
 				const [startValue, endValue] = value
-				_.set(prismaFilters, `${propertyName}.lte`, endValue);
-				_.set(prismaFilters, `${propertyName}.gte`, startValue);
+				_.set(prismaFilters, `${nestedFieldPath?nestedFieldPath:propertyName}.lte`, endValue);
+				_.set(prismaFilters, `${nestedFieldPath?nestedFieldPath:propertyName}.gte`, startValue);
 			}
 		},
 	}
 
-	protected modeToFilter(filters?: Record<string, { mode: string; value: any, isRelation?: boolean }>) {
+	protected modeToFilter(filters?: Record<string, { mode: string; value: any, isRelation?: boolean,nestedFieldPath?:string }>) {
 		return _.transform(
 			filters ?? {},
 			(finalFilters: any, filter, fieldName) => {
-				const { mode, value, isRelation } = filter;
-				this.modeToTypeMappers[mode](finalFilters, value, fieldName, this.currentModelFieldsMapping[fieldName], isRelation);
+				const { mode, value, isRelation,nestedFieldPath } = filter;
+				this.modeToTypeMappers[mode]({ prismaFilters: finalFilters, value, propertyName: fieldName, fieldInfo: this.currentModelFieldsMapping[fieldName], isRelation, nestedFieldPath });
 			},
 			{}
 		);
