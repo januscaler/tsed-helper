@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import Aigle from 'aigle'
+import { Aigle } from 'aigle'
 import { sync } from 'glob'
 import { join, basename, dirname } from 'path'
 

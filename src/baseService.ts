@@ -1,8 +1,8 @@
 import { InjectorService, OnInit } from '@tsed/di';
 import _ from 'lodash';
-import { SearchParams } from './baseCrud';
+import { SearchParams } from './baseCrud.js';
 import { Subject } from 'rxjs';
-import { PrismaMapperEntity, PrismaMapperEntityField, PrismaMetaMapper } from './prismaMetaMapper'
+import { PrismaMapperEntity, PrismaMapperEntityField, PrismaMetaMapper } from './prismaMetaMapper.js'
 
 export interface IBaseService {
 	onUpdate: Subject<{ id: number, inputData: any, result: any }>

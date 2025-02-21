@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "module": "CommonJS",
-    "target": "esnext",
-    "moduleResolution": "node",
+    "module": "NodeNext",
+    "target": "ESNext",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "moduleResolution": "NodeNext",
     "declaration": true,
     "esModuleInterop": true,
     "sourceMap": false,
