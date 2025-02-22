@@ -1,7 +1,11 @@
 import _ from 'lodash';
-import { Aigle } from 'aigle'
+import aigle from 'aigle'
 import { sync } from 'glob'
 import { join, basename, dirname } from 'path'
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const { Aigle } = aigle
 
 export class SeederHelper {
 

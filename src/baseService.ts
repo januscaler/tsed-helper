@@ -1,4 +1,5 @@
-import { InjectorService, OnInit } from '@tsed/di';
+import {  OnInit } from '@tsed/di';
+import { inject} from "@tsed/di";
 import _ from 'lodash';
 import { SearchParams } from './baseCrud.js';
 import { Subject } from 'rxjs';
@@ -11,7 +12,7 @@ export interface IBaseService {
 }
 
 export class BaseService<T> implements OnInit, IBaseService {
-	constructor(public token: string, public injectService: InjectorService, private prismaService: any, relativePrismaFilePath?: string) {
+	constructor(public token: any, private prismaService: any, relativePrismaFilePath?: string) {
 		this.prismaFilePath = relativePrismaFilePath ?? "./prisma/schema.prisma"
 	}
 	public prismaFilePath: string
@@ -73,7 +74,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 
 	async $onInit(): Promise<any> {
 		const prismaMapper = new PrismaMetaMapper(this.prismaFilePath)
-		this.repositoryContainer = this.injectService.get<typeof this.token>(this.token);
+		this.repositoryContainer = inject<T>(this.token);
 		this.tablesInfo = await prismaMapper.getTablesInfo()
 	}
 
