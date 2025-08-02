@@ -1,12 +1,12 @@
 import _ from 'lodash';
 import pi from '@prisma/internals';
-import { join,dirname } from 'path'
+import { join, dirname } from 'path'
 import { DMMF, ReadonlyDeep } from '@prisma/client/runtime/library';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const { getDMMF }=pi
+const { getDMMF } = pi
 
 export interface PrismaMapperEntity {
     name: string;
@@ -53,7 +53,7 @@ export class PrismaMetaMapper {
         mappings: DMMF.Mappings;
     }>> {
         const dmmf = await getDMMF({
-            datamodelPath: join(__dirname, '../../../../', this.relativePrismaFilePath)
+            datamodel: join(__dirname, '../../../../', this.relativePrismaFilePath)
         })
         return dmmf
     }
