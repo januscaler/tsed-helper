@@ -3,6 +3,7 @@ import pi from '@prisma/internals';
 import { join, dirname } from 'path'
 import { DMMF, ReadonlyDeep } from '@prisma/client/runtime/library';
 import { fileURLToPath } from 'url';
+import { readFile } from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -53,7 +54,7 @@ export class PrismaMetaMapper {
         mappings: DMMF.Mappings;
     }>> {
         const dmmf = await getDMMF({
-            datamodel: join(__dirname, '../../../../', this.relativePrismaFilePath)
+            datamodel: await readFile(this.relativePrismaFilePath, 'utf-8')
         })
         return dmmf
     }

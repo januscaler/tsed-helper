@@ -4,13 +4,14 @@ import _ from 'lodash';
 import { SearchParams } from './baseCrud.js';
 import { Subject } from 'rxjs';
 import { PrismaMapperEntity, PrismaMapperEntityField, PrismaMetaMapper } from './prismaMetaMapper.js'
+import { Generics } from '@tsed/schema';
 
 export interface IBaseService {
 	onUpdate: Subject<{ id: number, inputData: any, result: any }>
 	onDelete: Subject<{ id: number, result: any }>
 	onCreate: Subject<{ data: any, result: any }>
 }
-
+@Generics("T")
 export class BaseService<T> implements OnInit, IBaseService {
 	constructor(public token: any, private prismaService: any, relativePrismaFilePath?: string) {
 		this.prismaFilePath = relativePrismaFilePath ?? "./prisma/schema.prisma"

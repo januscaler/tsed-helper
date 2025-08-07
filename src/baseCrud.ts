@@ -1,5 +1,5 @@
 import { useDecorators } from '@tsed/core';
-import { Delete, Get, Post, Put, } from '@tsed/common';
+import { Delete, Get, inject, Post, Put, } from '@tsed/common';
 import { Any, CollectionOf, Default, Returns, Summary } from '@tsed/schema';
 import _ from 'lodash';
 
@@ -95,10 +95,8 @@ export function getItems(options: GetItems): Function {
 	return useDecorators(
 		Post(path ?? '/search'),
 		Summary(summary ? summary(options) : `Get all ${nameWithoutModel(model)}`),
-		Returns(200, Object)
+		Returns(200, model)
 			.Groups('read')
-			.Of(model)
 			.Description(`Return a list of ${nameWithoutModel(model)}`)
 	);
 }
-
