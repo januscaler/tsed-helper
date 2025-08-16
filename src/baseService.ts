@@ -1,5 +1,4 @@
-import {  OnInit } from '@tsed/di';
-import { inject} from "@tsed/di";
+import { OnInit } from '@tsed/di';
 import _ from 'lodash';
 import { SearchParams } from './baseCrud.js';
 import { Subject } from 'rxjs';
@@ -13,11 +12,17 @@ export interface IBaseService {
 }
 @Generics("T")
 export class BaseService<T> implements OnInit, IBaseService {
-	constructor(public token: any, private prismaService: any, relativePrismaFilePath?: string) {
+	/**
+ * Service configuration options.
+ *
+ * @property {Prisma.Repository} injectedRepository - A valid Prisma model repository required for this service.
+ * @property {PrismaService} prismaService - An instance of the PrismaService.
+ * @property {string} [relativePrismaFilePath="./prisma/schema.prisma"] - Optional path to the Prisma schema file. Defaults to "./prisma/schema.prisma".
+ */
+	constructor(public injectedRepository: any, private prismaService: any, relativePrismaFilePath?: string) {
 		this.prismaFilePath = relativePrismaFilePath ?? "./prisma/schema.prisma"
 	}
 	public prismaFilePath: string
-	private repositoryContainer: any;
 	tablesInfo: Record<string, PrismaMapperEntity> = {}
 
 	onUpdate: Subject<{ id: number, inputData: any, result: any }> = new Subject()
@@ -27,25 +32,25 @@ export class BaseService<T> implements OnInit, IBaseService {
 	onDelete: Subject<{ id: number, result: any }> = new Subject()
 
 	get repository() {
-		return this.repositoryContainer as T;
+		return this.injectedRepository as T;
 	}
 
 	get fieldNames() {
-		if (this.repositoryContainer?.collection) {
-			return Object.keys(this.repositoryContainer.collection.fields)
+		if (this.injectedRepository?.collection) {
+			return Object.keys(this.injectedRepository.collection.fields)
 		}
-		else if (this.repositoryContainer?.fields) {
-			return Object.keys(this.repositoryContainer.fields)
+		else if (this.injectedRepository?.fields) {
+			return Object.keys(this.injectedRepository.fields)
 		}
-		throw new Error('repositoryContainer has no fields, probably you passed wrong repository');
+		throw new Error('injectedRepository has no fields, probably you passed wrong repository');
 	}
 
 	get currentModelName() {
-		if (this.repositoryContainer?.name) {
-			return this.repositoryContainer.name
+		if (this.injectedRepository?.name) {
+			return this.injectedRepository.name
 		}
-		if (this.repositoryContainer?.collection?.name) {
-			return this.repositoryContainer.collection.name;
+		if (this.injectedRepository?.collection?.name) {
+			return this.injectedRepository.collection.name;
 		}
 	}
 
@@ -69,30 +74,29 @@ export class BaseService<T> implements OnInit, IBaseService {
 				[_.camelCase(model)]: computedFields as any
 			}
 		})
-		this.repositoryContainer = data[_.camelCase(model)]
+		this.injectedRepository = data[_.camelCase(model)]
 	}
 
 
 	async $onInit(): Promise<any> {
 		const prismaMapper = new PrismaMetaMapper(this.prismaFilePath)
-		this.repositoryContainer = inject<T>(this.token);
 		this.tablesInfo = await prismaMapper.getTablesInfo()
 	}
 
 	async create(data: any) {
-		const result = await this.repositoryContainer.create({ data });
+		const result = await this.injectedRepository.create({ data });
 		this.onCreate.next({ data, result });
 		return result;
 	}
 
 	async deleteItem(id: number) {
-		const result = await this.repositoryContainer.delete({ where: { id }, select: { id: true } });
+		const result = await this.injectedRepository.delete({ where: { id }, select: { id: true } });
 		this.onDelete.next({ id, result });
 		return result;
 	}
 
 	async getOne(id: number) {
-		return (await this.repositoryContainer.findFirst({ where: { id } })) || {};
+		return (await this.injectedRepository.findFirst({ where: { id } })) || {};
 	}
 
 	async update(id: number, data: any, { relationOperation, relationvalueMapper }: {
@@ -110,7 +114,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 		}, {
 			...dataWithRelations
 		})
-		const result = await this.repositoryContainer.update({ where: { id }, data: finalData });
+		const result = await this.injectedRepository.update({ where: { id }, data: finalData });
 		this.onUpdate.next({ id, inputData: data, result });
 		return result;
 	}
@@ -236,13 +240,13 @@ export class BaseService<T> implements OnInit, IBaseService {
 				)
 		};
 
-		const { _count: { id: total } } = await this.repositoryContainer.aggregate({
+		const { _count: { id: total } } = await this.injectedRepository.aggregate({
 			where: this.modeToFilter(filters),
 			_count: {
 				id: true,
 			}
 		});
-		const items = await this.repositoryContainer.findMany(properties);
+		const items = await this.injectedRepository.findMany(properties);
 		return {
 			total,
 			items
