@@ -1,6 +1,6 @@
 import { useDecorators } from '@tsed/core';
 import { Delete, Get, inject, Post, Put, } from '@tsed/common';
-import { Any, CollectionOf, Default, Returns, Summary } from '@tsed/schema';
+import { Any, CollectionOf, Default, Property, Returns, Summary } from '@tsed/schema';
 import _ from 'lodash';
 
 function nameWithoutModel(model: any): string {
@@ -72,7 +72,6 @@ export interface GetItems {
 	summary?: (options: GetItems) => string;
 }
 
-type TM = { [key: string]: 'asc' | 'desc' };
 export class SearchParams {
 	@Default(10) limit?: number;
 	@Default(0) offset?: number;
@@ -90,12 +89,18 @@ export class SearchParams {
 	include?: any;
 }
 
+class GetItemsResponse<T> {
+	@Property()
+	items: T[];
+	@Property()
+	total: number;
+}
 export function getItems(options: GetItems): Function {
 	const { path, model, summary } = options;
 	return useDecorators(
 		Post(path ?? '/search'),
 		Summary(summary ? summary(options) : `Get all ${nameWithoutModel(model)}`),
-		Returns(200, model)
+		Returns(200, GetItemsResponse<typeof model>)
 			.Groups('read')
 			.Description(`Return a list of ${nameWithoutModel(model)}`)
 	);
