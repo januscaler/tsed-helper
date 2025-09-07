@@ -226,19 +226,23 @@ export class BaseService<T> implements OnInit, IBaseService {
 		const properties = {
 			skip: offset,
 			take: limit,
-			include: include,
+			include: {
+				...include,
+				..._.transform(_.remove(fields, 'id'), (result, field) => {
+					result[field] = true;
+				}, {})
+			},
 			orderBy: orderBy,
 			where: this.modeToFilter(filters),
 			select: _.isNil(fields)
 				? null
-				: _.transform(
-					fields,
-					(result, field) => {
-						result[field] = true;
-					},
-					{}
-				)
+				: _.transform(fields, (result, field) => {
+					result[field] = true;
+				}, {})
 		};
+		if (_.size(properties.include)) {
+			delete properties.select;
+		}
 
 		const { _count: { id: total } } = await this.injectedRepository.aggregate({
 			where: this.modeToFilter(filters),

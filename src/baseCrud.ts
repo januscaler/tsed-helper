@@ -89,14 +89,15 @@ export class SearchParams {
 	include?: any;
 }
 
-class GetItemsResponse<T> {
-	@Property()
-	items: T[];
-	@Property()
-	total: number;
-}
+
 export function getItems(options: GetItems): Function {
 	const { path, model, summary } = options;
+	class GetItemsResponse<T> {
+		@CollectionOf(model)
+		items: T[];
+		@Property()
+		total: number;
+	}
 	return useDecorators(
 		Post(path ?? '/search'),
 		Summary(summary ? summary(options) : `Get all ${nameWithoutModel(model)}`),
