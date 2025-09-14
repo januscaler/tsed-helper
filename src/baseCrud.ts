@@ -1,7 +1,8 @@
 import { useDecorators } from '@tsed/core';
 import { Delete, Get, inject, Post, Put, } from '@tsed/common';
-import { Any, CollectionOf, Default, Property, Returns, Summary } from '@tsed/schema';
+import { Any, CollectionOf, Default, Example, Property, Returns, Summary } from '@tsed/schema';
 import _ from 'lodash';
+import { SearchFilterRecord } from './types.js';
 
 function nameWithoutModel(model: any): string {
 	return _.replace(model.name, 'Model', '');
@@ -75,18 +76,9 @@ export interface GetItems {
 export class SearchParams {
 	@Default(10) limit?: number;
 	@Default(0) offset?: number;
-	@CollectionOf(Object) orderBy?: Record<string, 'asc' | 'desc'>;
-	@CollectionOf(String) fields?: string[];
-	@Any() @Default({}) filters?: Record<
-		string,
-		{
-			mode: string;
-			value: any;
-			isRelation?: boolean;
-		}
-	>;
-	@Any()
-	include?: any;
+	@Default({ id: 'asc' }) @CollectionOf(Object) orderBy?: Record<string, 'asc' | 'desc'>;
+	@Default(['name', 'roles.name']) @CollectionOf(String) fields?: string[];
+	@Default({ name: { mode: 'EQ', value: 'test', isRelation: false } }) @CollectionOf(Object) filters?: SearchFilterRecord[];
 }
 
 

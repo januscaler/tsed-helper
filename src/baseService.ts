@@ -4,6 +4,7 @@ import { SearchParams } from './baseCrud.js';
 import { Subject } from 'rxjs';
 import { PrismaMapperEntity, PrismaMapperEntityField, PrismaMetaMapper } from './prismaMetaMapper.js'
 import { Generics } from '@tsed/schema';
+import { SearchFilterRecord, SearchFilterValue } from './types.js';
 
 export interface IBaseService {
 	onUpdate: Subject<{ id: number, inputData: any, result: any }>
@@ -129,7 +130,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 		RG: 'RG'
 	};
 
-	protected modeToTypeMappers = {
+	protected modeToTypeMappers: Record<string, (prismaFilters: any, value: any, fieldName: string, fieldInfo: any, isRelation: boolean) => void> = {
 		EM: (prismaFilters: any, value: any, fieldName: string, fieldInfo: any, isRelation: boolean) => {
 			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
 				_.set(prismaFilters, `${fieldName}`, null);
@@ -211,41 +212,48 @@ export class BaseService<T> implements OnInit, IBaseService {
 		},
 	}
 
-	protected modeToFilter(filters?: Record<string, { mode: string; value: any, isRelation?: boolean }>) {
-		return _.transform(
-			filters ?? {},
-			(finalFilters: any, filter, fieldName) => {
-				const { mode, value, isRelation } = filter;
-				this.modeToTypeMappers[mode](finalFilters, value, fieldName, this.currentModelFieldsMapping[fieldName], isRelation);
-			},
-			{}
-		);
+	protected modeToPrismaFilter(filters: SearchFilterRecord) {
+		return _.transform<SearchFilterValue, any>(filters, (finalFilters, filter, fieldName) => {
+			const { mode, value, isRelation } = filter;
+			if (!_.has(this.modeToTypeMappers, mode)) {
+				throw new Error(`Unsupported filter mode: ${mode}`);
+			}
+			this.modeToTypeMappers[mode](finalFilters, value, fieldName, this.currentModelFieldsMapping[fieldName], isRelation);
+		}, {});
 	}
 
-	async getAll({ filters, offset, limit, fields, include, orderBy }: SearchParams) {
+	protected filtersToPrismaOrCondition(filters: SearchFilterRecord[]) {
+		return _.transform<SearchFilterRecord, any>(filters, (finalFilters, modeFilter) => {
+			if (!finalFilters.OR) {
+				finalFilters.OR = [];
+			}
+			const prismaFilter = this.modeToPrismaFilter(modeFilter);
+			finalFilters.OR.push(prismaFilter);
+		}, {});
+	}
+
+	async getAll({ filters, offset, limit, fields, orderBy }: SearchParams) {
+		const prismaWhere = this.filtersToPrismaOrCondition(filters)
+		const selectFields = _.transform(fields, (result, field) => {
+			if (_.includes(field, '.')) {
+				const [relations, relationColumnName] = _.split(field, '.')
+				if (!result[relations]) {
+					result[relations] = { select: {} };
+				}
+				result[relations].select[relationColumnName] = true;
+				return;
+			}
+			result[field] = true;
+		}, {})
 		const properties = {
 			skip: offset,
 			take: limit,
-			include: {
-				...include,
-				..._.transform(_.remove(fields, 'id'), (result, field) => {
-					result[field] = true;
-				}, {})
-			},
 			orderBy: orderBy,
-			where: this.modeToFilter(filters),
-			select: _.isNil(fields)
-				? null
-				: _.transform(fields, (result, field) => {
-					result[field] = true;
-				}, {})
+			where: prismaWhere,
+			select: selectFields
 		};
-		if (_.size(properties.include)) {
-			delete properties.select;
-		}
-
 		const { _count: { id: total } } = await this.injectedRepository.aggregate({
-			where: this.modeToFilter(filters),
+			where: prismaWhere,
 			_count: {
 				id: true,
 			}

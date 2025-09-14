@@ -1,6 +1,6 @@
 {
   "name": "@januscaler/tsed-helper",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "type": "module",
   "publishConfig": {
     "@januscaler:registry": "https://npm.pkg.github.com"
@@ -36,6 +36,7 @@
     "@tsed/di": "8.15.0",
     "@tsed/prisma": "8.15.0",
     "@tsed/schema": "8.15.0",
+    "@types/lodash": "^4.17.20",
     "aigle": "1.14.1",
     "glob": "11.0.3",
     "lodash": "4.17.21",
