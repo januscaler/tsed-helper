@@ -156,6 +156,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 			}
 			if (fieldInfo.type === 'String') {
 				_.set(prismaFilters, `${propertyName}.contains`, value);
+				_.set(prismaFilters, `${propertyName}.mode`, 'insensitive');
 			}
 		},
 		EX: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {

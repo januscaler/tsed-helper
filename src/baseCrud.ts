@@ -1,6 +1,6 @@
 import { useDecorators } from '@tsed/core';
 import { Delete, Get, inject, Post, Put, } from '@tsed/common';
-import { Any, CollectionOf, Default, Example, Property, Returns, Summary } from '@tsed/schema';
+import {  CollectionOf, Default, Example, Property, Required, Returns, Summary } from '@tsed/schema';
 import _ from 'lodash';
 import { SearchFilterRecord } from './types.js';
 
@@ -77,7 +77,9 @@ export class SearchParams {
 	@Default(10) limit?: number;
 	@Default(0) offset?: number;
 	@Default({ id: 'asc' }) @CollectionOf(Object) orderBy?: Record<string, 'asc' | 'desc'>;
-	@Default(['name', 'roles.name']) @CollectionOf(String) fields?: string[];
+	@Default(['name', 'roles.name']) 
+	@Required(true)
+	@CollectionOf(String) fields?: string[];
 	@Default({ name: { mode: 'EQ', value: 'test', isRelation: false } }) @CollectionOf(Object) filters?: SearchFilterRecord[];
 }
 
