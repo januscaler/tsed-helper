@@ -77,9 +77,7 @@ export class SearchParams {
 	@Default(10) limit?: number;
 	@Default(0) offset?: number;
 	@Default({ id: 'asc' }) @CollectionOf(Object) orderBy?: Record<string, 'asc' | 'desc'>;
-	@Default(['name', 'roles.name']) 
-	@Required(true)
-	@CollectionOf(String) fields?: string[];
+	@Example(['name', 'roles.name']) @Required(true) @CollectionOf(String) fields?: string[];
 	@Default({ name: { mode: 'EQ', value: 'test', isRelation: false } }) @CollectionOf(Object) filters?: SearchFilterRecord[];
 }
 
