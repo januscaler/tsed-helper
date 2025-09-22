@@ -145,7 +145,15 @@ export class BaseService<T> implements OnInit, IBaseService {
 				_.set(prismaFilters, `${propertyName}.equals`, value);
 			}
 			if (fieldInfo.type === 'DateTime') {
-				_.set(prismaFilters, `${propertyName}.equals`, value);
+				if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+					const start = new Date(value);
+					const end = new Date(start);
+					end.setDate(start.getDate() + 1);
+					_.set(prismaFilters, `${propertyName}.gte`, start);
+					_.set(prismaFilters, `${propertyName}.lt`, end);
+				} else {
+					_.set(prismaFilters, `${propertyName}.equals`, new Date(value));
+				}
 			}
 			if (_.isArray(value)) {
 				if (isRelation) {
