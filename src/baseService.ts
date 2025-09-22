@@ -125,6 +125,8 @@ export class BaseService<T> implements OnInit, IBaseService {
 		EX: 'EX',
 		LT: 'LT',
 		GT: 'GT',
+		LTE: 'LTE',
+		GTE: 'GTE',
 		EM: 'EM',
 		NEM: 'NEM',
 		RG: 'RG'
@@ -137,6 +139,9 @@ export class BaseService<T> implements OnInit, IBaseService {
 			}
 
 			if (fieldInfo.type === 'String' && !fieldInfo.isRequired) {
+				_.set(prismaFilters, `${fieldName}`, null);
+			}
+			if (fieldInfo.type === 'DateTime') {
 				_.set(prismaFilters, `${fieldName}`, null);
 			}
 		},
@@ -190,7 +195,15 @@ export class BaseService<T> implements OnInit, IBaseService {
 				_.set(prismaFilters, `${propertyName}.lt`, value);
 			}
 			if (fieldInfo.type === 'DateTime') {
-				_.set(prismaFilters, `${propertyName}.lt`, value);
+				_.set(prismaFilters, `${propertyName}.lt`, new Date(value));
+			}
+		},
+		LTE: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+			if (_.isNumber(value)) {
+				_.set(prismaFilters, `${propertyName}.lte`, value);
+			}
+			if (fieldInfo.type === 'DateTime') {
+				_.set(prismaFilters, `${propertyName}.lte`, new Date(value));
 			}
 		},
 		GT: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
@@ -198,8 +211,18 @@ export class BaseService<T> implements OnInit, IBaseService {
 				_.set(prismaFilters, `${propertyName}.gt`, value);
 			}
 			if (fieldInfo.type === 'DateTime') {
-				_.set(prismaFilters, `${propertyName}.gt`, value);
+				_.set(prismaFilters, `${propertyName}.gt`, new Date(value));
 			}
+
+		},
+		GTE: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+			if (_.isNumber(value)) {
+				_.set(prismaFilters, `${propertyName}.gte`, value);
+			}
+			if (fieldInfo.type === 'DateTime') {
+				_.set(prismaFilters, `${propertyName}.gte`, new Date(value));
+			}
+
 		},
 		NEM: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
 			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
@@ -215,9 +238,18 @@ export class BaseService<T> implements OnInit, IBaseService {
 		RG: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
 			if (_.isArray(value)) {
 				const [startValue, endValue] = value
+				if (fieldInfo.type === 'DateTime') {
+					const start = new Date(startValue);
+					const end = new Date(endValue);
+					end.setDate(end.getDate() + 1);
+					_.set(prismaFilters, `${propertyName}.gte`, start);
+					_.set(prismaFilters, `${propertyName}.lt`, end);
+					return;
+				}
 				_.set(prismaFilters, `${propertyName}.lte`, endValue);
 				_.set(prismaFilters, `${propertyName}.gte`, startValue);
 			}
+			
 		},
 	}
 
