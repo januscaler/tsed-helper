@@ -14,6 +14,18 @@ export interface IBaseService<M> {
 	onPreCreate?: Subject<{ data: M }>
 	onPostCreate: Subject<{ data: M, result: any }>
 }
+export type RelationMapper = {
+
+	relationvalueMapper?: (fieldName: string, value: any) => any
+}
+
+export interface CreateRelationMapper extends RelationMapper {
+	relationOperation?: 'connect' | 'connectOrCreate' | 'create' | 'createMany'
+}
+
+export interface UpdateRelationMapper extends RelationMapper {
+	relationOperation?: 'set' | 'disconnect' | 'delete' | 'connect' | 'disconnectMany' | 'deleteMany' | 'create' | 'createMany' | 'update' | 'updateMany' | 'upsert' | 'upsertMany'
+}
 
 @Generics("T", "M")
 export class BaseService<T, M> implements OnInit, IBaseService<M> {
@@ -90,9 +102,97 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 		this.tablesInfo = await prismaMapper.getTablesInfo()
 	}
 
-	async create(data: M) {
+	/**
+	 * Updates the current Prisma model record and optionally rewrites relation fields in one call.
+	 *
+	 * @param id Record identifier passed to the Prisma `where` clause.
+	 * @param data Plain object that can mix scalar fields (written directly) and relation fields (handled via Prisma relation operations).
+	 * @param options.relationOperation Prisma relation operation (`set`, `connect`, `disconnectMany`, etc.) applied to every relation key found in `data`. Defaults to `set`.
+	 * @param options.relationvalueMapper Optional transformer that receives each relation value from `data` before it is sent to Prisma. Use it to build compound keys, wrap payloads, or handle `connectOrCreate` inputs.
+	 *
+	 * @example
+	 * // Replace the existing tags with two tag ids while mapping the ids to Prisma connect objects.
+	 * await service.update(42, { title: 'Draft', tags: [1, 2] }, {
+	 *   relationOperation: 'set',
+	 *   relationvalueMapper: (ids) => ids.map((id) => ({ id })),
+	 * });
+	 *
+	 * @example
+	 * // Append comments by turning each comment payload into a Prisma create object.
+	 * await service.update(42, { comments: [{ text: 'Nice!' }] }, {
+	 *   relationOperation: 'createMany',
+	 *   relationvalueMapper: (comments) => ({ data: comments }),
+	 * });
+	 */
+	async update(id: number, data: any, { relationOperation, relationvalueMapper }: UpdateRelationMapper = { relationOperation: 'set' }) {
+		const defaultRelationValueMapper = (value: any) => (_.isArray(value) ? _.map(value, (id: any) => ({ id })) : { id: value })
+		const dataWithRelations = _.pick(data, this.fieldNames)
+		const relationData = _.omit(data, this.fieldNames)
+		const finalData = _.transform(relationData, (result, value, key) => {
+			if (_.isNil(value)) {
+				return
+			}
+			if (!relationvalueMapper) {
+				result[key] = { [relationOperation]: defaultRelationValueMapper(value) }
+				return;
+			}
+			const relationvalue = relationvalueMapper(key, value)
+			if (_.isNil(relationvalue)) {
+				return
+			}
+			result[key] = { [relationOperation]: relationvalue }
+		}, {
+			...dataWithRelations
+		})
+		this.onPreUpdate?.next({ id, inputData: data });
+		const result = await (this.repository as any).update({ where: { id }, data: finalData });
+		this.onPostUpdate.next({ id, inputData: data, result });
+		return result;
+	}
+
+	/**
+	 * Creates a Prisma model record while optionally performing relation writes in the same call.
+	 *
+	 * @param data Plain object that can mix scalar columns and relation fields destined for Prisma create operations.
+	 * @param options.relationOperation Prisma relation operation (`connect`, `connectOrCreate`, `create`, `createMany`) applied to every relation key from `data`. Defaults to `connect`.
+	 * @param options.relationvalueMapper Optional transformer invoked per relation value from `data` before passing it to Prisma. Ideal for wrapping ids in `connect` objects or preparing nested `create` payloads.
+	 *
+	 * @example
+	 * // Create a post and connect it with existing tag ids.
+	 * await service.create({ title: 'Draft', tags: [1, 2] }, {
+	 *   relationOperation: 'connect',
+	 *   relationvalueMapper: (field,ids) => ids.map((id) => ({ id })),
+	 * });
+	 *
+	 * @example
+	 * // Create a post with newly created comments in one transaction.
+	 * await service.create({ title: 'Draft', comments: [{ text: 'Nice!' }] }, {
+	 *   relationOperation: 'createMany',
+	 *   relationvalueMapper: (field,comments) => ({ data: comments }),
+	 * });
+	 */
+	async create(data: M, { relationOperation, relationvalueMapper }: CreateRelationMapper = { relationOperation: 'connect' }) {
 		this.onPreCreate?.next({ data });
-		const result = await (this.repository as any).create({ data });
+		const defaultRelationValueMapper = (value: any) => (_.isArray(value) ? _.map(value, (id: any) => ({ id })) : { id: value })
+		const dataWithRelations = _.pick(data, this.fieldNames)
+		const relationData = _.omit(data as any, this.fieldNames)
+		const finalData = _.transform(relationData, (result, value, key) => {
+			if (_.isNil(value)) {
+				return
+			}
+			if (!relationvalueMapper) {
+				result[key] = { [relationOperation]: defaultRelationValueMapper(value) }
+				return;
+			}
+			const relationvalue = relationvalueMapper(key, value)
+			if (_.isNil(relationvalue)) {
+				return
+			}
+			result[key] = { [relationOperation]: relationvalue }
+		}, {
+			...dataWithRelations
+		})
+		const result = await (this.repository as any).create({ data: finalData });
 		this.onPostCreate.next({ data, result });
 		return result;
 	}
@@ -108,26 +208,7 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 		return (await (this.repository as any).findFirst({ where: { id } })) || {};
 	}
 
-	async update(id: number, data: any, { relationOperation, relationvalueMapper }: {
-		relationOperation?: 'set' | 'disconnect' | 'delete' | 'connect' | 'disconnectMany' | 'deleteMany' | 'create' | 'createMany' | 'update' | 'updateMany' | 'upsert' | 'upsertMany'
-		relationvalueMapper?: (value: any) => any
-	} = {}) {
-		const defaultRelationValueMapper = (value: any) => (_.isArray(value) ? _.map(value, (id: any) => ({ id })) : { id: value })
-		const dataWithRelations = _.pick(data, this.fieldNames)
-		const relationData = _.omit(data, this.fieldNames)
-		const finalData = _.transform(relationData, (result, value, key) => {
-			if (_.isNil(value)) {
-				return
-			}
-			result[key] = { [relationOperation ?? 'set']: relationvalueMapper ? relationvalueMapper(value) : defaultRelationValueMapper(value) }
-		}, {
-			...dataWithRelations
-		})
-		this.onPreUpdate?.next({ id, inputData: data });
-		const result = await (this.repository as any).update({ where: { id }, data: finalData });
-		this.onPostUpdate.next({ id, inputData: data, result });
-		return result;
-	}
+
 
 	readonly MODES = {
 		EQ: 'EQ',
