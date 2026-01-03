@@ -6,57 +6,63 @@ import { PrismaMapperEntity, PrismaMapperEntityField, PrismaMetaMapper } from '.
 import { Generics } from '@tsed/schema';
 import { SearchFilterRecord, SearchFilterValue } from './types.js';
 
-export interface IBaseService {
-	onUpdate: Subject<{ id: number, inputData: any, result: any }>
-	onDelete: Subject<{ id: number, result: any }>
-	onCreate: Subject<{ data: any, result: any }>
+export interface IBaseService<M> {
+	onPostUpdate: Subject<{ id: number, inputData: M, result: any }>
+	onPreUpdate?: Subject<{ id: number, inputData: M }>
+	onPreDelete?: Subject<{ id: number }>
+	onPostDelete: Subject<{ id: number, result: any }>
+	onPreCreate?: Subject<{ data: M }>
+	onPostCreate: Subject<{ data: M, result: any }>
 }
-@Generics("T")
-export class BaseService<T> implements OnInit, IBaseService {
+
+@Generics("T", "M")
+export class BaseService<T, M> implements OnInit, IBaseService<M> {
 	/**
  * Service configuration options.
  *
- * @property {Prisma.Repository} injectedRepository - A valid Prisma model repository required for this service.
- * @property {PrismaService} prismaService - An instance of the PrismaService.
+ * @property {string} tsedPrismaModelName - A valid Prisma model name required for this service.
+ * @property {PrismaService} prismaService - An instance of the PrismaService used for computations and extensions.
  * @property {string} [relativePrismaFilePath="./prisma/schema.prisma"] - Optional path to the Prisma schema file. Defaults to "./prisma/schema.prisma".
  */
-	constructor(public injectedRepository: any, private prismaService: any, relativePrismaFilePath?: string) {
+	constructor(public tsedPrismaModelName: any, private prismaService: any, relativePrismaFilePath?: string) {
 		this.prismaFilePath = relativePrismaFilePath ?? "./prisma/schema.prisma"
 	}
+
 	public prismaFilePath: string
 	tablesInfo: Record<string, PrismaMapperEntity> = {}
 
-	onUpdate: Subject<{ id: number, inputData: any, result: any }> = new Subject()
-
-	onCreate: Subject<{ data: any, result: any }> = new Subject()
-
-	onDelete: Subject<{ id: number, result: any }> = new Subject()
+	onPostUpdate: Subject<{ id: number, inputData: M, result: any }> = new Subject()
+	onPreUpdate?: Subject<{ id: number; inputData: M; }> = new Subject()
+	onPreDelete?: Subject<{ id: number }> = new Subject()
+	onPreCreate?: Subject<{ data: M }> = new Subject();
+	onPostCreate: Subject<{ data: M, result: any }> = new Subject()
+	onPostDelete: Subject<{ id: number, result: any }> = new Subject()
 
 	get repository() {
-		return this.injectedRepository as T;
+		return this.prismaService[this.modelName] as T;
+	}
+
+	get modelName() {
+		return _.camelCase(_.split(this.tsedPrismaModelName, 'Model')[0]) as string;
 	}
 
 	get fieldNames() {
-		if (this.injectedRepository?.collection) {
-			return Object.keys(this.injectedRepository.collection.fields)
+		// @ts-ignore
+		if ((this.repository as any)?.collection) {
+			// @ts-ignore
+			return Object.keys((this.repository as any).collection.fields)
 		}
-		else if (this.injectedRepository?.fields) {
-			return Object.keys(this.injectedRepository.fields)
+		// @ts-ignore
+		else if ((this.repository as any)?.fields) {
+			// @ts-ignore
+			return Object.keys((this.repository as any).fields)
 		}
-		throw new Error('injectedRepository has no fields, probably you passed wrong repository');
+		throw new Error('repository has no fields, probably you passed wrong repository');
 	}
 
-	get currentModelName() {
-		if (this.injectedRepository?.name) {
-			return this.injectedRepository.name
-		}
-		if (this.injectedRepository?.collection?.name) {
-			return this.injectedRepository.collection.name;
-		}
-	}
 
 	get currentModelInfo() {
-		return this.tablesInfo[this.currentModelName]
+		return this.tablesInfo[this.modelName]
 	}
 
 	get currentModelFieldsMapping() {
@@ -66,16 +72,15 @@ export class BaseService<T> implements OnInit, IBaseService {
 		}, {}) as Record<string, PrismaMapperEntityField>
 	}
 
-	extend<T>(model: string, computedFields: Record<string, {
-		needs: Partial<Record<keyof T, boolean>>
-		compute: (model: T) => any
+	extend<M>(computedFields: Record<string, {
+		needs: Partial<Record<keyof M, boolean>>
+		compute: (model: M) => any
 	}>) {
-		const data = this.prismaService.$extends({
+		this.prismaService.$extends({
 			result: {
-				[_.camelCase(model)]: computedFields as any
+				[this.modelName]: computedFields as any
 			}
 		})
-		this.injectedRepository = data[_.camelCase(model)]
 	}
 
 
@@ -84,20 +89,22 @@ export class BaseService<T> implements OnInit, IBaseService {
 		this.tablesInfo = await prismaMapper.getTablesInfo()
 	}
 
-	async create(data: any) {
-		const result = await this.injectedRepository.create({ data });
-		this.onCreate.next({ data, result });
+	async create(data: M) {
+		this.onPreCreate?.next({ data });
+		const result = await (this.repository as any).create({ data });
+		this.onPostCreate.next({ data, result });
 		return result;
 	}
 
 	async deleteItem(id: number) {
-		const result = await this.injectedRepository.delete({ where: { id }, select: { id: true } });
-		this.onDelete.next({ id, result });
+		this.onPreDelete?.next({ id });
+		const result = await (this.repository as any).delete({ where: { id }, select: { id: true } });
+		this.onPostDelete.next({ id, result });
 		return result;
 	}
 
 	async getOne(id: number) {
-		return (await this.injectedRepository.findFirst({ where: { id } })) || {};
+		return (await (this.repository as any).findFirst({ where: { id } })) || {};
 	}
 
 	async update(id: number, data: any, { relationOperation, relationvalueMapper }: {
@@ -115,8 +122,9 @@ export class BaseService<T> implements OnInit, IBaseService {
 		}, {
 			...dataWithRelations
 		})
-		const result = await this.injectedRepository.update({ where: { id }, data: finalData });
-		this.onUpdate.next({ id, inputData: data, result });
+		this.onPreUpdate?.next({ id, inputData: data });
+		const result = await (this.repository as any).update({ where: { id }, data: finalData });
+		this.onPostUpdate.next({ id, inputData: data, result });
 		return result;
 	}
 
@@ -249,7 +257,7 @@ export class BaseService<T> implements OnInit, IBaseService {
 				_.set(prismaFilters, `${propertyName}.lte`, endValue);
 				_.set(prismaFilters, `${propertyName}.gte`, startValue);
 			}
-			
+
 		},
 	}
 
@@ -293,13 +301,13 @@ export class BaseService<T> implements OnInit, IBaseService {
 			where: prismaWhere,
 			select: selectFields
 		};
-		const { _count: { id: total } } = await this.injectedRepository.aggregate({
+		const { _count: { id: total } } = await (this.repository as any).aggregate({
 			where: prismaWhere,
 			_count: {
 				id: true,
 			}
 		});
-		const items = await this.injectedRepository.findMany(properties);
+		const items = await (this.repository as any).findMany(properties);
 		return {
 			total,
 			items
