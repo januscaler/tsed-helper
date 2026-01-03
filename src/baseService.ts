@@ -62,7 +62,8 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 
 
 	get currentModelInfo() {
-		return this.tablesInfo[this.modelName]
+		// coz it is stored with uppercase first letter
+		return this.tablesInfo[_.upperFirst(this.modelName)]
 	}
 
 	get currentModelFieldsMapping() {
@@ -76,7 +77,7 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 		needs: Partial<Record<keyof M, boolean>>
 		compute: (model: M) => any
 	}>) {
-		this.prismaService=this.prismaService.$extends({
+		this.prismaService = this.prismaService.$extends({
 			result: {
 				[this.modelName]: computedFields as any
 			}
