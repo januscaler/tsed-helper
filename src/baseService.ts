@@ -76,7 +76,7 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 		needs: Partial<Record<keyof M, boolean>>
 		compute: (model: M) => any
 	}>) {
-		this.prismaService.$extends({
+		this.prismaService=this.prismaService.$extends({
 			result: {
 				[this.modelName]: computedFields as any
 			}
