@@ -1,6 +1,6 @@
 {
   "name": "@januscaler/tsed-helper",
-  "version": "2.3.3",
+  "version": "2.3.4",
   "type": "module",
   "publishConfig": {
     "@januscaler:registry": "https://npm.pkg.github.com"
@@ -18,28 +18,30 @@
     "dist/**/*"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "prettier": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@types/node": "24.5.0",
-    "typescript": "5.9.2"
+    "@types/node": "25.0.9",
+    "typescript": "5.9.3"
   },
   "dependencies": {
-    "@prisma/client": "6.16.2",
-    "@prisma/internals": "6.16.2",
-    "@tsed/common": "8.16.2",
-    "@tsed/core": "8.16.2",
-    "@tsed/di": "8.16.2",
-    "@tsed/prisma": "8.16.2",
-    "@tsed/schema": "8.16.2",
-    "@types/lodash": "^4.17.20",
+    "@prisma/client": "6.19.2",
+    "@prisma/internals": "6.19.2",
+    "@tsed/common": "8.23.0",
+    "@tsed/core": "8.23.0",
+    "@tsed/di": "8.23.0",
+    "@tsed/prisma": "8.23.0",
+    "@tsed/schema": "8.23.0",
+    "@types/lodash": "^4.17.23",
     "aigle": "1.14.1",
-    "glob": "11.0.3",
+    "glob": "13.0.0",
     "lodash": "4.17.21",
+    "prettier": "^3.8.0",
     "rxjs": "7.8.2"
   }
 }

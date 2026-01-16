@@ -3,6 +3,7 @@ import aigle from 'aigle'
 import { sync } from 'glob'
 import { join, basename, dirname } from 'path'
 import { fileURLToPath } from 'url';
+import { PrismaMetaMapper } from './prismaMetaMapper.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const { Aigle } = aigle
@@ -21,8 +22,8 @@ export class SeederHelper {
         }, {})
     }
 
-    async generatePrismaCreateUpdatePayload({ rowData, metaMapper, entity, prismaService }) {
-        const entityFieldMapping = await metaMapper.getEntityFieldMapping(entity);
+    async generatePrismaCreateUpdatePayload({ rowData, entity, prismaService }) {
+        const entityFieldMapping = await PrismaMetaMapper.getEntityFieldMapping(entity);
         return Aigle.transform(rowData, async (createPayload, value, column: string) => {
             if (entityFieldMapping[column]?.relationName) {
                 const targetColumnEntityName = _.lowerFirst(entityFieldMapping[column].type)

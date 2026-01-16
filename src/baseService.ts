@@ -98,8 +98,8 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 
 
 	async $onInit(): Promise<any> {
-		const prismaMapper = new PrismaMetaMapper(this.prismaFilePath)
-		this.tablesInfo = await prismaMapper.getTablesInfo()
+		PrismaMetaMapper.relativePrismaFilePath = this.prismaFilePath
+		this.tablesInfo = await PrismaMetaMapper.getTablesInfo()
 	}
 
 	/**
@@ -379,7 +379,7 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 		const properties = {
 			skip: offset,
 			take: limit,
-			orderBy: orderBy,
+			orderBy: _.map(orderBy, (value, key) => ({ [key]: value })),
 			where: prismaWhere,
 			select: selectFields
 		};
