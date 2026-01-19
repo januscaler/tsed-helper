@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import pi from '@prisma/internals';
-import { DMMF, ReadonlyDeep } from '@prisma/client/runtime/library';
+import { DMMF, ReadonlyDeep } from '@prisma/client/runtime/client';
 import { readFile } from 'fs/promises';
 const { getDMMF } = pi
 

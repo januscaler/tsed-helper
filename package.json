@@ -1,6 +1,6 @@
 {
   "name": "@januscaler/tsed-helper",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "type": "module",
   "publishConfig": {
     "@januscaler:registry": "https://npm.pkg.github.com"
@@ -30,8 +30,8 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
-    "@prisma/client": "6.19.2",
-    "@prisma/internals": "6.19.2",
+    "@prisma/client": "6.16.3",
+    "@prisma/internals": "6.16.3",
     "@tsed/common": "8.23.0",
     "@tsed/core": "8.23.0",
     "@tsed/di": "8.23.0",
