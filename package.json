@@ -1,6 +1,6 @@
 {
   "name": "@januscaler/tsed-helper",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "type": "module",
   "publishConfig": {
     "@januscaler:registry": "https://npm.pkg.github.com"
@@ -26,22 +26,22 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@types/node": "25.3.3",
-    "typescript": "5.9.3"
+    "@types/node": "25.6.0",
+    "typescript": "6.0.3"
   },
   "dependencies": {
-    "@prisma/client": "7.4.2",
-    "@prisma/internals": "7.4.2",
-    "@tsed/common": "8.25.1",
-    "@tsed/core": "8.25.1",
-    "@tsed/di": "8.25.1",
-    "@tsed/prisma": "8.25.1",
-    "@tsed/schema": "8.25.1",
+    "@prisma/client": "7.8.0",
+    "@prisma/internals": "7.8.0",
+    "@tsed/common": "8.27.0",
+    "@tsed/core": "8.27.0",
+    "@tsed/di": "8.27.0",
+    "@tsed/prisma": "8.27.0",
+    "@tsed/schema": "8.27.0",
     "@types/lodash": "^4.17.24",
     "aigle": "1.14.1",
     "glob": "13.0.6",
-    "lodash": "4.17.23",
-    "prettier": "^3.8.1",
+    "lodash": "4.18.1",
+    "prettier": "3.8.3",
     "rxjs": "7.8.2"
   }
 }
