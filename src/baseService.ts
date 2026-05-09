@@ -236,6 +236,11 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 				return;
 			}
 
+			if (fieldInfo.type === 'Boolean' && !fieldInfo.isRequired) {
+				_.set(prismaFilters, `${fieldName}`, null);
+				return;
+			}
+
 			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
 				_.set(prismaFilters, `${fieldName}`, null);
 			}
@@ -248,6 +253,9 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 			}
 		},
 		EQ: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+			if (fieldInfo.type === 'Boolean') {
+				_.set(prismaFilters, `${propertyName}.equals`, value);
+			}
 			if (fieldInfo.type === 'Int') {
 				_.set(prismaFilters, `${propertyName}.equals`, value);
 			}
@@ -351,6 +359,9 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 				_.set(prismaFilters, `${propertyName}.not`, null);
 			}
 			if (fieldInfo.type === 'String' && !fieldInfo.isRequired) {
+				_.set(prismaFilters, `${propertyName}.not`, null);
+			}
+			if (fieldInfo.type === 'Boolean' && !fieldInfo.isRequired) {
 				_.set(prismaFilters, `${propertyName}.not`, null);
 			}
 			if (fieldInfo.type === 'DateTime') {
