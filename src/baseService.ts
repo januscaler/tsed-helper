@@ -224,6 +224,18 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 
 	protected modeToTypeMappers: Record<string, (prismaFilters: any, value: any, fieldName: string, fieldInfo: any, isRelation: boolean) => void> = {
 		EM: (prismaFilters: any, value: any, fieldName: string, fieldInfo: any, isRelation: boolean) => {
+			// Prisma relation fields are DMMF `kind: 'object'` — scalar EM/NEM branches never matched, so filters were no-ops.
+			if (isRelation && fieldInfo.kind === 'object') {
+				if (fieldInfo.isList) {
+					// To-many: no related rows (empty relation)
+					_.set(prismaFilters, `${fieldName}.none`, {});
+					return;
+				}
+				// Optional to-one / one-to-one: disconnected (same as scalar optional null)
+				_.set(prismaFilters, fieldName, null);
+				return;
+			}
+
 			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
 				_.set(prismaFilters, `${fieldName}`, null);
 			}
@@ -251,9 +263,14 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 				}
 			}
 			if (_.isArray(value)) {
-				if (isRelation) {
-					_.set(prismaFilters, `${propertyName}.some.id.in`, value);
-				} else {
+				if (isRelation && fieldInfo.kind === 'object') {
+					// To-many: "some related row has id in …". To-one / one-to-one: nested id filter (`.some` is invalid → Prisma 500).
+					if (fieldInfo.isList) {
+						_.set(prismaFilters, `${propertyName}.some.id.in`, value);
+					} else {
+						_.set(prismaFilters, `${propertyName}.id.in`, value);
+					}
+				} else if (!isRelation) {
 					_.set(prismaFilters, `${propertyName}.in`, value);
 				}
 			}
@@ -270,9 +287,13 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 				_.set(prismaFilters, `${propertyName}.not.equals`, value);
 			}
 			if (_.isArray(value)) {
-				if (isRelation) {
-					_.set(prismaFilters, `${propertyName}.none.id.in`, value);
-				} else {
+				if (isRelation && fieldInfo.kind === 'object') {
+					if (fieldInfo.isList) {
+						_.set(prismaFilters, `${propertyName}.none.id.in`, value);
+					} else {
+						_.set(prismaFilters, `${propertyName}.id.notIn`, value);
+					}
+				} else if (!isRelation) {
 					_.set(prismaFilters, `${propertyName}.not.in`, value);
 				}
 			}
@@ -315,6 +336,17 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 
 		},
 		NEM: (prismaFilters: any, value: any, propertyName: string, fieldInfo: any, isRelation: boolean) => {
+			if (isRelation && fieldInfo.kind === 'object') {
+				if (fieldInfo.isList) {
+					// To-many: at least one related row exists
+					_.set(prismaFilters, `${propertyName}.some`, {});
+					return;
+				}
+				// Optional to-one / one-to-one: relation is set (not disconnected)
+				_.set(prismaFilters, `${propertyName}.isNot`, null);
+				return;
+			}
+
 			if (fieldInfo.type === 'Int' && !fieldInfo.isRequired) {
 				_.set(prismaFilters, `${propertyName}.not`, null);
 			}
