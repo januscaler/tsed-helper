@@ -3,6 +3,7 @@ import { Delete, Get, Post, Put, } from '@tsed/common';
 import { CollectionOf, Default, Enum, Example, Property, Required, Returns, Summary } from '@tsed/schema';
 import _ from 'lodash';
 import { SearchFilterRecord } from './types.js';
+import type { FilterMode } from './types.js';
 import { PrismaMetaMapper } from './prismaMetaMapper.js';
 import aigle from 'aigle';
 const { Aigle } = aigle;
@@ -80,8 +81,9 @@ export class SearchParams {
 	@Default(10) limit?: number;
 	@Default(0) offset?: number;
 	@Default({ id: 'asc' }) @CollectionOf(Object) orderBy?: Record<string, 'asc' | 'desc'>;
-	@Example(['name', 'roles.name']) @Required(true) @CollectionOf(String) fields?: string[];
+	@Example(['name', 'roles.name']) @CollectionOf(String) fields?: string[];
 	@Default({ name: { mode: 'EQ', value: 'test', isRelation: false } }) @CollectionOf(Object) filters?: SearchFilterRecord[];
+	@Property() @Default(true) countTotal?: boolean;
 }
 
 
@@ -105,18 +107,7 @@ export function getItems(options: GetItems): Function {
 
 
 
-export type FilterMode =
-	| "EM"
-	| "EQ"
-	| "EX"
-	| "LT"
-	| "LTE"
-	| "GT"
-	| "GTE"
-	| "NEM"
-	| "RG";
-
-export const FilterModeEnum: FilterMode[] = [
+export const FilterModeEnum: import('./types.js').FilterMode[] = [
 	"EM", "EQ", "EX", "LT", "LTE", "GT", "GTE", "NEM", "RG"
 ];
 

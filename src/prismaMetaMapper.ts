@@ -42,6 +42,11 @@ export interface PrismaMapperEntityField {
 export class PrismaMetaMapper {
 
     static relativePrismaFilePath: string = "./prisma/schema.prisma"
+    private static cache: Record<string, PrismaMapperEntity> | null = null;
+
+    static invalidateCache() {
+        PrismaMetaMapper.cache = null;
+    }
 
     static normalizeEntityName(entityName: string) {
         return _.upperFirst(_.camelCase(_.split(entityName, 'Model')[0])) as string
@@ -71,9 +76,11 @@ export class PrismaMetaMapper {
     }
 
     static async getTablesInfo() {
+        if (PrismaMetaMapper.cache) return PrismaMetaMapper.cache;
         const dmmf = await this.getDMMF()
-        return _.transform(dmmf.datamodel.models, (finalInfoMap, value) => {
+        PrismaMetaMapper.cache = _.transform(dmmf.datamodel.models, (finalInfoMap, value) => {
             finalInfoMap[value.name] = value
-        }, {}) as Promise<Record<string, PrismaMapperEntity>>
+        }, {}) as Record<string, PrismaMapperEntity>;
+        return PrismaMetaMapper.cache;
     }
 }
