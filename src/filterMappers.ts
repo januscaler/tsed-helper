@@ -7,6 +7,10 @@ export function isNumericType(type: string): boolean {
 	return NUMERIC_TYPES.has(type);
 }
 
+function isEnumType(fieldInfo: PrismaMapperEntityField): boolean {
+	return (fieldInfo as any).kind === 'enum';
+}
+
 function numericDateComparison(op: 'lt' | 'lte' | 'gt' | 'gte') {
 	return (out: Record<string, any>, value: any, fieldName: string, fieldInfo: PrismaMapperEntityField) => {
 		if (isNumericType(fieldInfo.type)) {
@@ -39,6 +43,10 @@ function eqMapper(out: Record<string, any>, value: any, fieldName: string, field
 		}
 		return;
 	}
+	if (isEnumType(fieldInfo)) {
+		_.set(out, `${fieldName}.equals`, value);
+		return;
+	}
 	if (fieldInfo.type === 'String') {
 		_.set(out, `${fieldName}.contains`, value);
 		_.set(out, `${fieldName}.mode`, 'insensitive');
@@ -60,6 +68,10 @@ function exMapper(out: Record<string, any>, value: any, fieldName: string, field
 	}
 	if (fieldInfo.type === 'DateTime') {
 		_.set(out, `${fieldName}.not.equals`, new Date(value));
+		return;
+	}
+	if (isEnumType(fieldInfo)) {
+		_.set(out, `${fieldName}.not.equals`, value);
 		return;
 	}
 	if (fieldInfo.type === 'String') {
