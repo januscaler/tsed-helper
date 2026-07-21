@@ -227,7 +227,7 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 	}
 
 	private async _countTotal(prismaWhere: any): Promise<number> {
-		const { _count: { id } } = await (this.repository as any).aggregate({ where: prismaWhere, _count: { id: true } });
-		return id;
+		const { _count: { _all } } = await (this.repository as any).aggregate({ where: prismaWhere, _count: { _all: true } });
+		return _all;
 	}
 }

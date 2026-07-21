@@ -1,6 +1,6 @@
 {
   "name": "@januscaler/tsed-helper",
-  "version": "2.4.6",
+  "version": "2.4.7",
   "type": "module",
   "publishConfig": {
     "@januscaler:registry": "https://npm.pkg.github.com"
@@ -19,7 +19,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prettier": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
+    "test": "npm run build && node --test test/**/*.test.mjs",
+    "prettier": "prettier --write 'src/**/*.ts' 'test/**/*.{ts,mjs}'"
   },
   "keywords": [],
   "author": "",
@@ -39,6 +40,7 @@
     "@tsed/schema": "8.28.2",
     "@types/lodash": "^4.17.24",
     "aigle": "1.14.1",
+    "cookie": "0.7.2",
     "glob": "13.0.6",
     "lodash": "4.18.1",
     "prettier": "3.8.3",
