@@ -104,7 +104,7 @@ async getAll(@BodyParams(UserSearchParams) searchParams: UserSearchParams) {
 |----------|------|---------|-------------|
 | `limit` | `number` | `10` | Page size |
 | `offset` | `number` | `0` | Pagination offset |
-| `fields` | `string[]` | — | Prisma `select` fields. Supports dot notation for relations (`roles.name`) |
+| `fields` | `string[]` | — | Prisma `select` fields. Supports dot notation for relations (`roles.name`). Validated against the model — see [Field validation](#field-validation) |
 | `orderBy` | `Record<string, 'asc' \| 'desc'>` | `{ id: 'asc' }` | Sort specification |
 | `filters` | `SearchFilterRecord[]` | — | Array of filter groups, each OR'd together |
 | `countTotal` | `boolean` | `true` | When false, skips the count query for faster response |
@@ -208,6 +208,14 @@ const { items, total } = await service.getAll({
   countTotal: true,
 });
 ```
+
+##### Field validation
+
+`getAll` checks every `fields[]` entry against the model's DMMF before building the `select`, and throws `BadRequest` naming the offending entry and listing what is selectable. It rejects an unknown root, an unknown column on a real relation, dotted access through a scalar or `Json` column, and nesting deeper than one level.
+
+Without this, an unselectable field reaches Prisma, which raises `PrismaClientValidationError` — not an `HttpException`, so Ts.ED reports a malformed request as a bare **500** with the reason visible only in the server log.
+
+Computed field names are always allowed (they are stripped or `$extends`-resolved later and never appear in the DMMF). Validation is skipped entirely when schema metadata has not loaded, so Prisma stays the fallback authority.
 
 #### `count(where?)`
 

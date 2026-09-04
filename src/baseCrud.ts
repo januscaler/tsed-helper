@@ -138,7 +138,7 @@ export class FilterItemModel {
 }
 
 export async function makeSearchParamsForPrismaModel<TField extends string>(model: string) {
-	const entityFieldMapping = await PrismaMetaMapper.getEntityFieldMapping(PrismaMetaMapper.normalizeEntityName(model));
+	const entityFieldMapping = await PrismaMetaMapper.getEntityFieldMapping(model);
 	const scalarExamples = _.transform(entityFieldMapping, (result, value, key) => {
 		if (!value.isList && !value.relationName) {
 			result.push(key as TField);
@@ -146,7 +146,7 @@ export async function makeSearchParamsForPrismaModel<TField extends string>(mode
 	}, [] as TField[]);
 	const relationExamples = await Aigle.transform(entityFieldMapping, async (result, value, key) => {
 		if (value.isList || value.relationName) {
-			const relationFieldMapping = await PrismaMetaMapper.getEntityFieldMapping(PrismaMetaMapper.normalizeEntityName(value.type));
+			const relationFieldMapping = await PrismaMetaMapper.getEntityFieldMapping(value.type);
 			for (const [relationFieldName, relationField] of Object.entries(relationFieldMapping)) {
 				if (!relationField.isList && !relationField.relationName) {
 					result.push(`${key}.${relationFieldName}` as TField);

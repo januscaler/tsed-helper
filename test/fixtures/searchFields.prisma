@@ -1,0 +1,33 @@
+// Fixture for searchFieldValidation.test.mjs.
+//
+// Mirrors the shape that produced the bug: `ExternalApi` is a flat config table
+// with no relations at all, while `ExternalUser` genuinely owns `permissions`.
+// A `fields: ["permissions.id"]` request must be rejected for the first and
+// honoured for the second.
+
+datasource db {
+  provider     = "postgresql"
+  relationMode = "prisma"
+}
+
+model ExternalApi {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  description String? @default("")
+  host        String?
+  apiSettings Json?   @default("{}")
+  isActive    Boolean @default(true)
+}
+
+model ExternalUser {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  permissions Permission[]
+}
+
+model Permission {
+  id            Int            @id @default(autoincrement())
+  permissionUid String         @unique
+  name          String         @unique
+  externalUsers ExternalUser[]
+}

@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BaseService } from '../dist/baseService.js';
+import { PrismaMetaMapper } from '../dist/prismaMetaMapper.js';
+
+test('preserves Prisma entity names that contain Model', () => {
+  const repository = {};
+
+  assert.equal(PrismaMetaMapper.normalizeEntityName('RvcVoiceModelModel'), 'RvcVoiceModel');
+  assert.equal(new BaseService('RvcVoiceModel', { rvcVoiceModel: repository }).modelName, 'rvcVoiceModel');
+  assert.equal(new BaseService('RvcVoiceModelModel', { rvcVoiceModel: repository }).modelName, 'rvcVoiceModel');
+});
 
 test('getAll counts models without an id field', async () => {
   let aggregateArgs;

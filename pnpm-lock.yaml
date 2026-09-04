@@ -23,6 +23,9 @@ importers:
       '@tsed/di':
         specifier: 8.28.2
         version: 8.28.2(@tsed/core@8.28.2)(@tsed/hooks@8.28.2)(@tsed/logger@8.0.5)
+      '@tsed/exceptions':
+        specifier: 8.28.2
+        version: 8.28.2(@tsed/core@8.28.2)
       '@tsed/prisma':
         specifier: 8.28.2
         version: 8.28.2(@prisma/client@7.8.0(typescript@6.0.3))(@tsed/core@8.28.2)(@tsed/di@8.28.2(@tsed/core@8.28.2)(@tsed/hooks@8.28.2)(@tsed/logger@8.0.5))(@tsed/json-mapper@8.28.2(@tsed/core@8.28.2)(@tsed/schema@8.28.2(@tsed/core@8.28.2)(@tsed/hooks@8.28.2)(@tsed/openspec@8.27.0)))(@tsed/schema@8.28.2(@tsed/core@8.28.2)(@tsed/hooks@8.28.2)(@tsed/openspec@8.27.0))(typescript@6.0.3)

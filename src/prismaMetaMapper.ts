@@ -49,7 +49,7 @@ export class PrismaMetaMapper {
     }
 
     static normalizeEntityName(entityName: string) {
-        return _.upperFirst(_.camelCase(_.split(entityName, 'Model')[0])) as string
+        return _.upperFirst(_.camelCase(entityName.replace(/Model$/, ''))) as string
     }
 
     static async getDMMF(overrideRelativePrismaFilePath?: string): Promise<ReadonlyDeep<{
@@ -65,7 +65,12 @@ export class PrismaMetaMapper {
 
     static async getEntity(entityName: string) {
         const tablesInfo = await this.getTablesInfo()
-        return tablesInfo[entityName]
+        const exactEntityName = _.upperFirst(_.camelCase(entityName))
+        const entity = tablesInfo[entityName] ?? tablesInfo[exactEntityName] ?? tablesInfo[this.normalizeEntityName(entityName)]
+        if (!entity) {
+            throw new Error(`Unknown Prisma entity "${entityName}"`)
+        }
+        return entity
     }
 
     static async getEntityFieldMapping(entityName: string) {

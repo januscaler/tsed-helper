@@ -1,4 +1,5 @@
 import { OnInit } from '@tsed/di';
+import { BadRequest } from '@tsed/exceptions';
 import _ from 'lodash';
 import { SearchParams } from './baseCrud.js';
 import { Subject } from 'rxjs';
@@ -52,6 +53,13 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 
 	computedFields: ComputedFieldDefinition[] = [];
 
+	/**
+	 * Field names registered through `extend()`. Prisma resolves these at query time
+	 * via `$extends`, so they are selectable — but they come from no `.prisma` file
+	 * and are absent from the DMMF, so `assertSelectableFields` has to be told.
+	 */
+	prismaExtendedFields: Set<string> = new Set();
+
 	static readonly MODES = {
 		EQ: 'EQ', EX: 'EX', LT: 'LT', GT: 'GT', LTE: 'LTE', GTE: 'GTE', EM: 'EM', NEM: 'NEM', RG: 'RG',
 	} as const;
@@ -68,7 +76,9 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 	}
 
 	get modelName() {
-		return _.camelCase(_.split(this.tsedPrismaModelName, 'Model')[0]) as string;
+		const exactModelName = _.camelCase(this.tsedPrismaModelName) as string;
+		if (this.prismaService[exactModelName]) return exactModelName;
+		return _.camelCase(String(this.tsedPrismaModelName).replace(/Model$/, '')) as string;
 	}
 
 	get fieldNames() {
@@ -96,6 +106,7 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 		needs: Partial<Record<keyof M, boolean>>
 		compute: (model: M) => any
 	}>) {
+		for (const name of Object.keys(computedFields)) this.prismaExtendedFields.add(name);
 		this.prismaService = this.prismaService.$extends({
 			result: {
 				[this.modelName]: computedFields as any
@@ -155,6 +166,64 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 		return (this.repository as any).upsert({ where, create, update });
 	}
 
+	/**
+	 * Every name a `fields[]` entry may carry: scalars, relations (bare or
+	 * `relation.column`), in-memory computed fields, and `extend()` fields.
+	 * Empty when schema metadata has not loaded.
+	 */
+	get selectableFields(): string[] {
+		const modelInfo = this.currentModelInfo;
+		if (!modelInfo) return [];
+		const scalars: string[] = [];
+		const relations: string[] = [];
+		for (const field of modelInfo.fields) {
+			if (!field.relationName) {
+				scalars.push(field.name);
+				continue;
+			}
+			const related = this.tablesInfo[field.type];
+			if (!related) continue;
+			for (const relatedField of related.fields) {
+				if (!relatedField.relationName) relations.push(`${field.name}.${relatedField.name}`);
+			}
+		}
+		return [...scalars, ...relations, ...this.computedFields.map((def) => def.name), ...this.prismaExtendedFields];
+	}
+
+	/**
+	 * Reject a `fields[]` entry the model cannot select before it reaches Prisma.
+	 * Prisma raises `PrismaClientValidationError` for an unknown field, which is not
+	 * an HttpException, so the client sees an opaque 500 for what is a malformed
+	 * request. Fail closed with the offending field named instead.
+	 */
+	protected assertSelectableFields(fields: string[]) {
+		if (!fields?.length) return;
+		const modelInfo = this.currentModelInfo;
+		if (!modelInfo) return; // schema metadata unavailable — leave validation to Prisma
+		const fieldsByName = this.currentModelFieldsMapping;
+		const computedNames = new Set(this.computedFields.map((def) => def.name));
+
+		const problems = _.flatMap(fields, (field) => {
+			const [root, column, ...rest] = field.split('.');
+			if (computedNames.has(root) || this.prismaExtendedFields.has(root)) return [];
+			const rootField = fieldsByName[root];
+			if (!rootField) return [`"${field}" — ${modelInfo.name} has no field named "${root}"`];
+			if (column === undefined) return [];
+			if (rest.length) return [`"${field}" — only one level of relation nesting is supported`];
+			if (!rootField.relationName) return [`"${field}" — "${root}" is a ${rootField.type} column, not a relation`];
+			const related = this.tablesInfo[rootField.type];
+			if (related && !related.fields.some((f) => f.name === column && !f.relationName)) {
+				return [`"${field}" — ${rootField.type} has no column named "${column}"`];
+			}
+			return [];
+		});
+
+		if (!problems.length) return;
+		throw new BadRequest(
+			`Invalid "fields" for ${modelInfo.name}: ${problems.join('; ')}. Selectable fields: ${this.selectableFields.join(', ')}.`,
+		);
+	}
+
 	protected modeToPrismaFilter(filters: SearchFilterRecord): Record<string, any> {
 		return _.transform(filters, (out: Record<string, any>, filter, fieldName) => {
 			const mapper = filterMappers[filter.mode];
@@ -175,6 +244,7 @@ export class BaseService<T, M> implements OnInit, IBaseService<M> {
 
 	async getAll({ filters, offset, limit, fields, orderBy, countTotal = true }: SearchParams) {
 		const requestedFields = fields ?? [];
+		this.assertSelectableFields(requestedFields);
 		const split = splitSearchParams({ filters, fields, orderBy }, this.computedFields);
 		const hasComputedWork = split.computedFilters.length > 0 || Object.keys(split.computedOrderBy).length > 0;
 
